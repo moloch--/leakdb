@@ -17,10 +17,6 @@ package main
 	----------------------------------------------------------------------
 */
 
-import (
-	apiclient "github.com/moloch--/leakdb/internal/api-client"
-)
-
 func main() {
-	apiclient.Execute()
+
 }

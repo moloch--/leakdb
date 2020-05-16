@@ -35,17 +35,83 @@ LDFLAGS = -ldflags "-s -w \
 	-X $(PKG).GitCommit=$(GIT_COMMIT) \
 	-X $(PKG).GitDirty=$(GIT_DIRTY)"
 
+API_CLIENT_OUTFILE=leakdb
+API_SERVER_OUTFILE=leakdb-server
+API_LAMDBA_OUTFILE=leakdb-lambda
+CURATOR_OUTFILE=leakdb-curator
+
 bin:
 	mkdir -p ./bin/
 
-leakdb-curator: bin
-	GOOS=$(GOOS) $(GO) build $(LDFLAGS) -o ./bin/leakdb-curator ./cmd/curator
+bin/leakdb-curator: PKG=github.com/moloch--/leakdb/internal/curator
+bin/leakdb-curator: bin
+	GOOS=$(GOOS) $(GO) build $(LDFLAGS) -o ./bin/$(CURATOR_OUTFILE) ./cmd/curator
 
+bin/leakdb: PKG=github.com/moloch--/leakdb/internal/api-client
+bin/leakdb: bin
+	GOOS=$(GOOS) $(GO) build $(LDFLAGS) -o ./bin/$(API_CLIENT_OUTFILE) ./cmd/api-client
+
+bin/leakdb-server: PKG=github.com/moloch--/leakdb/internal/api-server
+bin/leakdb-server: bin
+	GOOS=$(GOOS) $(GO) build $(LDFLAGS) -o ./bin/$(API_SERVER_OUTFILE) ./cmd/api-server
+
+bin/leakdb-lambda: bin
+	cd aws/lambda/leakdb && GOOS=linux go build -o ./$(API_LAMDBA_OUTFILE) .
+	zip ./bin/$(API_LAMDBA_OUTFILE).zip ./aws/lambda/leakdb/$(API_LAMDBA_OUTFILE)
+
+#
+# Curator Builds
+#
 .PHONY: macos
-macos:
-	$(eval GOOS := darwin)
-	$(MAKE) bin/leakdb-curator
+macos: GOOS=darwin
+macos: bin/leakdb-curator
+
+.PHONY: linux
+linux: GOOS=linux
+linux: bin/leakdb-curator
+
+.PHONY: windows
+windows: GOOS=windows
+windows: CURATOR_OUTFILE=leakdb-curator.exe
+windows: bin/leakdb-curator
+
+#
+# API Client Builds
+#
+.PHONY: macos
+macos: GOOS=darwin
+macos: bin/leakdb
+
+.PHONY: linux
+linux: GOOS=linux
+linux: bin/leakdb
+
+.PHONY: windows
+windows: GOOS=windows
+windows: CURATOR_OUTFILE=leakdb.exe
+windows: bin/leakdb
+
+#
+# API Server Builds
+#
+.PHONY: macos
+macos: GOOS=darwin
+macos: bin/leakdb-server
+
+.PHONY: linux
+linux: GOOS=linux
+linux: bin/leakdb-server
+
+.PHONY: windows
+windows: GOOS=windows
+windows: CURATOR_OUTFILE=leakdb-server.exe
+windows: bin/leakdb-server
+
+#
+# API Lambda Builds
+#
+.PHONY: lambda
+lambda: bin/leakdb-lambda
 
 clean:
-	rm -f ./bin/leakdb
-	rm -f ./bin/leakdb-curator
+	rm -f ./bin/leakdb*

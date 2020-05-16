@@ -93,9 +93,9 @@ class Parser(object):
             return
         display_info('Scanning: %s\n' % target)
         with open(target, 'r', encoding='utf-8', errors='ignore') as fp:
-            self.walk_file(fp)
+            self.parse_file(fp)
 
-    def walk_file(self, fp):
+    def parse_file(self, fp):
         ''' Walk a file line by line '''
         for count, line in enumerate(self.lazy_readline(fp)):
             display_info('Parsing line %d ...' % (count+1))
@@ -214,7 +214,7 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        description='Normalizes leaked database files for use in BigQuery')
+        description='Normalizes leaked database files for use in LeakDB')
     parser.add_argument('--target', '-t',
                         help='file or directory with leak file(s)',
                         dest='targets',
@@ -222,7 +222,7 @@ if __name__ == '__main__':
                         required=True)
     parser.add_argument('--output', '-o',
                         dest='output',
-                        help='output file with hooks (default: cwd)',
+                        help='output json file (default: cwd)',
                         default='leaks.json')
     parser.add_argument('--format', '-f',
                         dest='format',

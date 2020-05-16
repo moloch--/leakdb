@@ -1,4 +1,4 @@
-package main
+package bloomer
 
 /*
 	---------------------------------------------------------------------
@@ -80,20 +80,17 @@ func (w *Worker) start() {
 }
 
 // Start - Start the bloomer
-func Start(targets []string, output, saveFilter, loadFilter string, maxWorkers int, filterSize, filterHashes uint) {
+func Start(targets []string, output, saveFilter, loadFilter string, maxWorkers, filterSize, filterHashes uint) error {
 	if maxWorkers < 1 {
 		maxWorkers = 1
 	}
-	fmt.Printf("Bloom filter: Size = %dGb (%d bytes), Hashes = %d\n", filterSize, (filterSize * gb), filterHashes)
-	fmt.Printf("Target: %v\n", targets)
-	fmt.Printf("Output: %s\n", output)
 	lines := make(chan string, lineBufferSize)
 	go lineQueue(targets, lines)
 	startWorkers(output, saveFilter, loadFilter, lines, maxWorkers, filterSize, filterHashes)
-
+	return nil
 }
 
-func startWorkers(output, save, load string, lines chan string, maxWorkers int, filterSize, hashingFuncs uint) {
+func startWorkers(output, save, load string, lines chan string, maxWorkers, filterSize, hashingFuncs uint) {
 
 	outputFile, err := os.OpenFile(output, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
@@ -118,7 +115,7 @@ func startWorkers(output, save, load string, lines chan string, maxWorkers int, 
 	bloomMutex := sync.RWMutex{}
 	wg := sync.WaitGroup{}
 	workers := []*Worker{}
-	for id := 1; id <= maxWorkers; id++ {
+	for id := 1; id <= int(maxWorkers); id++ {
 		wg.Add(1)
 		worker := &Worker{
 			ID:          id,
@@ -155,7 +152,8 @@ func startWorkers(output, save, load string, lines chan string, maxWorkers int, 
 	}
 }
 
-func getTargets(target string) ([]string, error) {
+// GetTargets - Get targets from target directory
+func GetTargets(target string) ([]string, error) {
 	targetStat, err := os.Stat(target)
 	if err != nil {
 		return []string{}, err

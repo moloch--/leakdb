@@ -1,4 +1,4 @@
-package main
+package indexer
 
 /*
 	---------------------------------------------------------------------
@@ -179,15 +179,15 @@ func mergeIndexes(output string, indexDir string, cleanup bool) {
 	fmt.Printf("done!\n")
 }
 
-func divisionOfLabor(target string, maxWorkers int) []Labor {
+func divisionOfLabor(target string, maxWorkers int) ([]Labor, error) {
 	targetInfo, err := os.Stat(target)
 	if os.IsNotExist(err) {
-		panic(err)
+		return nil, err
 	}
 
 	targetFile, err := os.Open(target)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	defer targetFile.Close()
 
@@ -225,24 +225,25 @@ func divisionOfLabor(target string, maxWorkers int) []Labor {
 		Stop:  targetInfo.Size(),
 	})
 
-	fmt.Printf("%v\n", offsets)
-
-	return offsets
+	return offsets, nil
 }
 
 // Start - Start indexer
-func Start(target, output, key string, maxWorkers int, cleanup, verbose bool) {
+func Start(target, output, key string, maxWorkers uint, cleanup bool, tempDir string, verbose bool) error {
 
-	offsets := divisionOfLabor(target, maxWorkers)
-
-	cwd, err := os.Getwd()
-	if err != nil {
-		panic(err)
+	if maxWorkers < 1 {
+		maxWorkers = 1
 	}
-	indexDir := filepath.Join(cwd, ".indexes")
-	err = os.MkdirAll(indexDir, os.ModePerm)
+
+	offsets, err := divisionOfLabor(target, int(maxWorkers))
 	if err != nil {
-		panic(err)
+		return err
+	}
+
+	indexDir := filepath.Join(tempDir, ".indexes")
+	err = os.MkdirAll(indexDir, 0700)
+	if err != nil {
+		return err
 	}
 	defer func() {
 		if cleanup {
@@ -258,7 +259,7 @@ func Start(target, output, key string, maxWorkers int, cleanup, verbose bool) {
 
 	wg := sync.WaitGroup{}
 	workers := []*Worker{}
-	for id := 0; id < maxWorkers; id++ {
+	for id := 0; id < int(maxWorkers); id++ {
 		wg.Add(1)
 		outputPath := filepath.Join(indexDir, fmt.Sprintf("%d_%s", id, filepath.Base(output)))
 		worker := &Worker{
@@ -274,4 +275,5 @@ func Start(target, output, key string, maxWorkers int, cleanup, verbose bool) {
 	}
 	wg.Wait()
 	mergeIndexes(output, indexDir, cleanup)
+	return nil
 }

@@ -40,7 +40,6 @@ For example, for sorting 900 megabytes of data using only 100 megabytes of RAM:
 */
 
 import (
-	"bufio"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -50,7 +49,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
-	"time"
 
 	"github.com/emirpasic/gods/trees/binaryheap"
 )
@@ -91,7 +89,7 @@ type Tape struct {
 	Size      int // Number of entires in tape file
 	MergeSize int // Number of entires in merge buffer
 	Position  int
-	Messages  chan string
+	Messages  chan<- string
 }
 
 // Save - Save tape to disk in dir
@@ -181,7 +179,7 @@ type Index struct {
 	Size          int // Number of entries
 	MaxGoRoutines int // Max number of worker go routines
 	MaxMemory     int // size of buffer in bytes
-	Messages      chan string
+	Messages      chan<- string
 	Tapes         []*Tape
 	TapeDir       string
 	NoTapeCleanup bool
@@ -478,65 +476,26 @@ func qsort(entries []Entry) {
 	return
 }
 
-func progress(idx *Index, start time.Time, messages chan string, done chan bool) {
-	spin := 0
-	frames := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
-	stdout := bufio.NewWriter(os.Stdout)
-	stats := &runtime.MemStats{}
-	elapsed := time.Now().Sub(start)
-	maxHeap := float64(0)
-	fmt.Println()
-	for {
-		select {
-		case <-done:
-			fmt.Printf("\u001b[1A") // Move up one
-			fmt.Println("\u001b[2K\rSorting completed!")
-			defer func() { done <- true }()
-			return
-		case msg := <-messages:
-			fmt.Printf("\u001b[1A")
-			fmt.Printf("\u001b[2K\r%s\n\n", msg)
-		case <-time.After(100 * time.Millisecond):
-			fmt.Printf("\u001b[1A") // Move up one
-			runtime.ReadMemStats(stats)
-			if spin%10 == 0 {
-				// Calculating time is kind of expensive, so update once per ~second
-				elapsed = time.Now().Sub(start)
-			}
-			heapAllocGb := float64(stats.HeapAlloc) / float64(Gb)
-			if maxHeap < heapAllocGb {
-				maxHeap = heapAllocGb
-			}
-			fmt.Printf("\u001b[2K\rGo routines: %d - Heap: %0.3fGb (Max: %0.3fGb) - Time: %v\n",
-				runtime.NumGoroutine(), heapAllocGb, maxHeap, elapsed)
-			fmt.Printf("\u001b[2K\rSorting, please wait ... %s ",
-				frames[spin%10])
-			spin++
-			stdout.Flush()
-		}
-	}
-}
-
-func checkSort(idx *Index, verbose bool) {
-	fmt.Printf("Checking sort ... ")
+func checkSort(messages chan<- string, idx *Index, verbose bool) {
+	messages <- "Checking sort ... "
 	if idx.Info.Size()%entrySize != 0 {
-		fmt.Printf("\nWarning: File size is irregular!\n")
+		messages <- "\nWarning: File size is irregular!\n"
 	}
 	for index := 0; index < idx.Size-1; index++ {
 		entry := idx.Get(index)
 		if verbose {
-			fmt.Printf("%09d - [%d : %v]\n", index, entry.Value(), entry.Offset)
+			messages <- fmt.Sprintf("%09d - [%d : %v]\n", index, entry.Value(), entry.Offset)
 		}
 		nextEntry := idx.Get(index + 1)
 		if nextEntry.Value() < entry.Value() {
 			if verbose {
-				fmt.Printf("%09d - [%d : %v]\n", index, nextEntry.Value(), nextEntry.Offset)
+				messages <- fmt.Sprintf("%09d - [%d : %v]\n", index, nextEntry.Value(), nextEntry.Offset)
 			}
-			fmt.Printf("\nIndex is not sorted correctly!\n")
+			messages <- "\nIndex is not sorted correctly!\n"
 			return
 		}
 	}
-	fmt.Printf("sorted!\n")
+	messages <- "sorted!\n"
 }
 
 // EntryComparer - Compares entries in an index
@@ -556,7 +515,7 @@ func EntryComparer(a, b interface{}) int {
 }
 
 // Start - Start the sorting process
-func Start(index, output string, maxMemory int, maxGoRoutines int, tempDir string, noTapeCleanup bool) error {
+func Start(messages chan<- string, index, output string, maxMemory int, maxGoRoutines int, tempDir string, noTapeCleanup bool) error {
 
 	indexStat, err := os.Stat(index)
 	if os.IsNotExist(err) || indexStat.IsDir() {
@@ -568,7 +527,6 @@ func Start(index, output string, maxMemory int, maxGoRoutines int, tempDir strin
 	}
 	defer indexFile.Close()
 
-	messages := make(chan string)
 	idx := &Index{
 		file:          indexFile,
 		Info:          indexStat,
@@ -588,14 +546,7 @@ func Start(index, output string, maxMemory int, maxGoRoutines int, tempDir strin
 	defer outputFile.Close()
 	idx.Output = outputFile
 
-	start := time.Now()
-	done := make(chan bool)
-	go progress(idx, start, messages, done)
 	idx.Sort()
-	elapsed := time.Now().Sub(start)
-	messages <- fmt.Sprintf("Time elapsed: %v", elapsed)
-	done <- true
-	<-done
 
 	return nil
 }

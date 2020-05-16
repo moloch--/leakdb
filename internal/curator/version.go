@@ -19,6 +19,8 @@ package curator
 
 import (
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -42,6 +44,13 @@ var versionCmd = &cobra.Command{
 	Short: "Display version information",
 	Long:  `Print the version number of leakdb-curator and exit`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("LeakDB Curator v%s\n", Version)
+		details, _ := cmd.Flags().GetBool(detailsFlagStr)
+		if details {
+			timeStamp, _ := strconv.Atoi(CompiledAt)
+			compiledAt := time.Unix(int64(timeStamp), 0)
+			fmt.Printf("LeakDB Curator v%s - Compiled %s - %s\n", Version, compiledAt, GitCommit)
+		} else {
+			fmt.Printf("LeakDB Curator v%s\n", Version)
+		}
 	},
 }

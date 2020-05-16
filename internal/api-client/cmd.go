@@ -1,4 +1,4 @@
-package main
+package apiclient
 
 /*
 	---------------------------------------------------------------------
@@ -33,9 +33,6 @@ var (
 
 	// APIToken - Auth token
 	APIToken = getEnvVar("LEAKDB_API_TOKEN", "")
-
-	// Version - LeakDB-CLI version
-	Version = "0.0.3"
 )
 
 // OutputConfig - Configure the client output of a query
@@ -52,15 +49,6 @@ var rootCmd = &cobra.Command{
 	Long:  `Query LeakDB for leaked credentials based on email, user, or domain.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("Must specify a query, see --help\n")
-	},
-}
-
-var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Version LeakDB CLI",
-	Long:  `Print the version number of leakdb and exit`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("Leakdb v%s\n", Version)
 	},
 }
 

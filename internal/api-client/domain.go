@@ -1,4 +1,4 @@
-package main
+package apiclient
 
 /*
 	---------------------------------------------------------------------
@@ -22,13 +22,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var userCmd = &cobra.Command{
-	Use:   "user",
-	Short: "Query user",
-	Long:  `Query LeakDB for all passwords associated with a user`,
+var domainCmd = &cobra.Command{
+	Use:   "domain",
+	Short: "Query domain",
+	Long:  `Query LeakDB for all passwords associated with a domain`,
 	Run: func(cmd *cobra.Command, args []string) {
 		genericQueryCommand(cmd, &leakdb.QuerySet{
-			User: args[0],
+			Domain: args[0],
 		})
 	},
 }

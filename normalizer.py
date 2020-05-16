@@ -119,9 +119,9 @@ class Parser(object):
     def save(self, email, user, domain, password):
         ''' Save results of parse_line()  '''
         self._output.write(json.dumps({
-            'email': email,
-            'user': user,
-            'domain': domain,
+            'email': email.lower(),
+            'user': user.lower(),
+            'domain': domain.lower(),
             'password': password,
         }))
         self._output.write("\n")

@@ -16,7 +16,7 @@ package main
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 	----------------------------------------------------------------------
 
-External Quicksort - Memory contrained quicksort program. This allows us to
+External Quicksort - Memory constrained quicksort program. This allows us to
                      sort an array of values larger than the amount of RAM
                      available.
 

@@ -145,10 +145,10 @@ func getKeyValue(cred Credential, key string) (string, error) {
 	return "", fmt.Errorf("invalid index key '%s'", key)
 }
 
-func mergeIndexes(output string, indexDir string, cleanup bool) {
+func mergeIndexes(output string, indexDir string, noCleanup bool) error {
 	outputFile, err := os.Create(output)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer func() {
 		outputFile.Close()
@@ -156,7 +156,7 @@ func mergeIndexes(output string, indexDir string, cleanup bool) {
 
 	indexFiles, err := ioutil.ReadDir(indexDir)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	fmt.Printf("Merging indexes ... ")
@@ -168,15 +168,16 @@ func mergeIndexes(output string, indexDir string, cleanup bool) {
 		inFile := filepath.Join(indexDir, indexFile.Name())
 		in, err := os.Open(inFile)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		io.Copy(outputFile, in)
-		if cleanup {
+		if !noCleanup {
 			os.Remove(inFile)
 		}
 	}
 
 	fmt.Printf("done!\n")
+	return nil
 }
 
 func divisionOfLabor(target string, maxWorkers int) ([]Labor, error) {
@@ -229,7 +230,7 @@ func divisionOfLabor(target string, maxWorkers int) ([]Labor, error) {
 }
 
 // Start - Start indexer
-func Start(target, output, key string, maxWorkers uint, cleanup bool, tempDir string, verbose bool) error {
+func Start(target, output, key string, maxWorkers uint, tempDir string, noCleanup bool) error {
 
 	if maxWorkers < 1 {
 		maxWorkers = 1
@@ -246,14 +247,8 @@ func Start(target, output, key string, maxWorkers uint, cleanup bool, tempDir st
 		return err
 	}
 	defer func() {
-		if cleanup {
-			indexFiles, err := ioutil.ReadDir(indexDir)
-			if err != nil {
-				panic(err)
-			}
-			if len(indexFiles) == 0 {
-				os.Remove(indexDir)
-			}
+		if !noCleanup {
+			os.RemoveAll(indexDir)
 		}
 	}()
 
@@ -267,13 +262,11 @@ func Start(target, output, key string, maxWorkers uint, cleanup bool, tempDir st
 			Wg:         &wg,
 			TargetPath: target,
 			OutputPath: outputPath,
-			Verbose:    verbose,
 			Labor:      offsets[id],
 		}
 		worker.start(key)
 		workers = append(workers, worker)
 	}
 	wg.Wait()
-	mergeIndexes(output, indexDir, cleanup)
-	return nil
+	return mergeIndexes(output, indexDir, noCleanup)
 }

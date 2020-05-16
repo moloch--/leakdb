@@ -1,5 +1,22 @@
 package curator
 
+/*
+	---------------------------------------------------------------------
+	This program is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+	----------------------------------------------------------------------
+*/
+
 import (
 	"fmt"
 	"os"
@@ -9,7 +26,8 @@ import (
 )
 
 const (
-	targetFlagStr = "target"
+	jsonFlagStr   = "json"
+	indexFlagStr  = "index"
 	outputFlagStr = "output"
 
 	workersFlagStr = "workers"
@@ -21,10 +39,14 @@ const (
 	filterSaveFlagStr   = "filter-save"
 
 	// Index flags
-	keyFlagStr     = "key"
-	cleanupFlagStr = "cleanup"
+	keyFlagStr       = "key"
+	noCleanupFlagStr = "no-cleanup"
 
 	tempDirFlagStr = "temp"
+
+	// Sort flags
+	maxMemoryFlagStr = "max-memory"
+	checkFlagStr     = "check"
 
 	kb = 1024
 	mb = kb * 1024
@@ -44,8 +66,8 @@ func init() {
 	rootCmd.AddCommand(versionCmd)
 
 	// Bloom
-	bloomCmd.Flags().StringP(targetFlagStr, "t", "", "target input directory/file(s)")
-	bloomCmd.Flags().StringP(outputFlagStr, "o", "", "output file")
+	bloomCmd.Flags().StringP(jsonFlagStr, "j", "", "target input directory of file(s)")
+	bloomCmd.Flags().StringP(outputFlagStr, "o", "", "output json file")
 	bloomCmd.Flags().UintP(workersFlagStr, "w", uint(runtime.NumCPU()), "number of worker threads")
 	bloomCmd.Flags().UintP(filterSizeFlagStr, "s", 8, "bloom filter size in GBs")
 	bloomCmd.Flags().UintP(filterHashesFlagStr, "f", 4, "number of bloom filter hash functions")
@@ -54,14 +76,21 @@ func init() {
 	rootCmd.AddCommand(bloomCmd)
 
 	// Indexer
-	indexCmd.Flags().StringP(targetFlagStr, "t", "", "target input file")
-	indexCmd.Flags().StringP(outputFlagStr, "o", "", "output file")
+	indexCmd.Flags().StringP(jsonFlagStr, "j", "", "json input file")
+	indexCmd.Flags().StringP(outputFlagStr, "o", "leakdb.idx", "output index file")
 	indexCmd.Flags().UintP(workersFlagStr, "w", uint(runtime.NumCPU()), "number of worker threads")
 	indexCmd.Flags().StringP(keyFlagStr, "k", "email", "index key can be: email, user, or domain")
-	indexCmd.Flags().BoolP(cleanupFlagStr, "c", true, "cleanup temp file(s)")
-	indexCmd.Flags().StringP(tempDirFlagStr, "T", "", "directory for temp files (must be writable)")
-
+	indexCmd.Flags().BoolP(noCleanupFlagStr, "c", false, "cleanup temp file(s)")
+	indexCmd.Flags().StringP(tempDirFlagStr, "T", "", "directory for temp files (default: cwd)")
 	rootCmd.AddCommand(indexCmd)
+
+	// Sorter
+	sortCmd.Flags().StringP(indexFlagStr, "i", "", "index file to sort")
+	sortCmd.Flags().UintP(maxMemoryFlagStr, "m", 0, "max memory per CPU core (not exact)")
+	sortCmd.Flags().StringP(tempDirFlagStr, "T", "", "directory for temp files (default: cwd)")
+	sortCmd.Flags().BoolP(noCleanupFlagStr, "c", false, "cleanup temp file(s)")
+
+	rootCmd.AddCommand(sortCmd)
 }
 
 // Execute - Execute the root command

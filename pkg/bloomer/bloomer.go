@@ -19,11 +19,9 @@ package bloomer
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -37,8 +35,7 @@ const (
 	mb = kb * 1024
 	gb = mb * 1024
 
-	lineBufferSize      = 4096
-	lineCountBufferSize = 4 * mb
+	lineBufferSize = 4096
 )
 
 // Worker - Worker thread
@@ -84,26 +81,22 @@ func Start(targets []string, output, saveFilter, loadFilter string, maxWorkers, 
 	if maxWorkers < 1 {
 		maxWorkers = 1
 	}
+
 	lines := make(chan string, lineBufferSize)
 	go lineQueue(targets, lines)
-	startWorkers(output, saveFilter, loadFilter, lines, maxWorkers, filterSize, filterHashes)
-	return nil
-}
-
-func startWorkers(output, save, load string, lines chan string, maxWorkers, filterSize, hashingFuncs uint) {
 
 	outputFile, err := os.OpenFile(output, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer outputFile.Close()
 
 	// Create filter and optionally load content from previously saved file
-	bloomFilter := bloom.New(uint(filterSize*gb), hashingFuncs)
-	if _, err := os.Stat(load); !os.IsNotExist(err) {
-		loadFile, err := os.Open(load)
+	bloomFilter := bloom.New(uint(filterSize*gb), filterHashes)
+	if _, err := os.Stat(loadFilter); !os.IsNotExist(err) {
+		loadFile, err := os.Open(loadFilter)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		defer loadFile.Close()
 		bloomFilter.ReadFrom(loadFile)
@@ -142,14 +135,15 @@ func startWorkers(output, save, load string, lines chan string, maxWorkers, filt
 	wg.Wait()
 
 	// Optionally save bloom filter
-	if 0 < len(save) {
-		saveFile, err := os.Create(save)
+	if 0 < len(saveFilter) {
+		saveFile, err := os.Create(saveFilter)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		defer saveFile.Close()
 		bloomFilter.WriteTo(saveFile)
 	}
+	return nil
 }
 
 // GetTargets - Get targets from target directory
@@ -180,6 +174,7 @@ func GetTargets(target string) ([]string, error) {
 }
 
 func lineQueue(targets []string, lines chan<- string) error {
+	defer close(lines)
 	for _, target := range targets {
 		if _, err := os.Stat(target); os.IsNotExist(err) {
 			return err
@@ -189,8 +184,8 @@ func lineQueue(targets []string, lines chan<- string) error {
 			return err
 		}
 		defer file.Close()
-		reader := bufio.NewReader(file)
 
+		reader := bufio.NewReader(file)
 		for {
 			line, err := reader.ReadString('\n')
 			if err == io.EOF {
@@ -198,57 +193,10 @@ func lineQueue(targets []string, lines chan<- string) error {
 				break
 			}
 			if err != nil {
-				log.Fatalf("Reader error: %s\n", err)
+				return err
 			}
 			lines <- line
 		}
 	}
-	close(lines)
 	return nil
-}
-
-func estimateRate(targets []string, filterSize, hashingFuncs uint) (int, float64, error) {
-	n := 0
-	fmt.Printf("\u001b[0K\rCount: %d", n)
-	for _, target := range targets {
-		count, err := lineCounter(target, n)
-		if err != nil {
-			fmt.Printf("\u001b[0K\rCount error: %s\n", err)
-			continue
-		}
-		n += count
-		fmt.Printf("\u001b[0K\rCount: %d", n)
-	}
-	fmt.Printf("\u001b[0K\r")
-	bloomFilter := bloom.New(uint(filterSize*gb), hashingFuncs)
-	rate := bloomFilter.EstimateFalsePositiveRate(uint(n))
-	return n, rate, nil
-}
-
-func lineCounter(target string, offset int) (int, error) {
-	if _, err := os.Stat(target); os.IsNotExist(err) {
-		return -1.0, err
-	}
-	file, err := os.Open(target)
-	if err != nil {
-		return -1.0, err
-	}
-	defer file.Close()
-
-	reader := bufio.NewReader(file)
-	buf := make([]byte, lineCountBufferSize)
-	count := 0
-	lineSep := []byte{'\n'}
-
-	for {
-		n, err := reader.Read(buf)
-		count += bytes.Count(buf[:n], lineSep)
-		fmt.Printf("\u001b[0K\rCount: %d", offset+count)
-		switch {
-		case err == io.EOF:
-			return count, nil
-		case err != nil:
-			return count, err
-		}
-	}
 }

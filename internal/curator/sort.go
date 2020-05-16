@@ -64,8 +64,11 @@ var sortCmd = &cobra.Command{
 				return
 			}
 		}
-		defer os.RemoveAll(tempDir)
+		if !noCleanup {
+			defer os.RemoveAll(tempDir)
+		}
 
-		sorter.Start(index, output, int(maxMemory), maxGoRoutines, noCleanup)
+		sorter.Start(index, output, int(maxMemory), maxGoRoutines, tempDir, noCleanup)
+
 	},
 }

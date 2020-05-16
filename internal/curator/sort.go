@@ -18,9 +18,12 @@ package curator
 */
 
 import (
+	"bufio"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"runtime"
+	"time"
 
 	"github.com/moloch--/leakdb/pkg/sorter"
 	"github.com/spf13/cobra"
@@ -37,30 +40,30 @@ var sortCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		index, err := cmd.Flags().GetString(indexFlagStr)
 		if err != nil {
-			fmt.Printf("Failed to parse --%s flag: %s\n", indexFlagStr, err)
+			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", indexFlagStr, err)
 			return
 		}
 		output, err := cmd.Flags().GetString(outputFlagStr)
 		if err != nil {
-			fmt.Printf("Failed to parse --%s flag: %s\n", outputFlagStr, err)
+			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", outputFlagStr, err)
 			return
 		}
 		maxMemory, err := cmd.Flags().GetUint(maxMemoryFlagStr)
 		noCleanup, err := cmd.Flags().GetBool(noCleanupFlagStr)
 		if err != nil {
-			fmt.Printf("Failed to parse --%s flag: %s\n", noCleanupFlagStr, err)
+			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", noCleanupFlagStr, err)
 			return
 		}
 		tempDir, err := cmd.Flags().GetString(tempDirFlagStr)
 		if err != nil {
-			fmt.Printf("Failed to parse --%s flag: %s\n", tempDirFlagStr, err)
+			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", tempDirFlagStr, err)
 			return
 		}
 		if tempDir == "" {
 			cwd, _ := os.Getwd()
 			tempDir, err = ioutil.TempDir(cwd, ".leakdb_")
 			if err != nil {
-				fmt.Printf("Temp error: %s\n", err)
+				fmt.Printf(Warn+"Temp error: %s\n", err)
 				return
 			}
 		}
@@ -68,7 +71,56 @@ var sortCmd = &cobra.Command{
 			defer os.RemoveAll(tempDir)
 		}
 
-		sorter.Start(index, output, int(maxMemory), maxGoRoutines, tempDir, noCleanup)
+		start := time.Now()
+		done := make(chan bool)
+		messages := make(chan string)
+		go progress(start, messages, done)
+
+		sorter.Start(messages, index, output, int(maxMemory), maxGoRoutines, tempDir, noCleanup)
+
+		elapsed := time.Now().Sub(start)
+		messages <- fmt.Sprintf("Time elapsed: %v", elapsed)
+		done <- true
+		<-done
 
 	},
+}
+
+func progress(start time.Time, messages chan string, done chan bool) {
+	spin := 0
+	frames := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+	stdout := bufio.NewWriter(os.Stdout)
+	stats := &runtime.MemStats{}
+	elapsed := time.Now().Sub(start)
+	maxHeap := float64(0)
+	fmt.Println()
+	for {
+		select {
+		case <-done:
+			fmt.Printf("\u001b[1A") // Move up one
+			fmt.Println("\u001b[2K\rSorting completed!")
+			defer func() { done <- true }()
+			return
+		case msg := <-messages:
+			fmt.Printf("\u001b[1A")
+			fmt.Printf("\u001b[2K\r%s\n\n", msg)
+		case <-time.After(100 * time.Millisecond):
+			fmt.Printf("\u001b[1A") // Move up one
+			runtime.ReadMemStats(stats)
+			if spin%10 == 0 {
+				// Calculating time is kind of expensive, so update once per ~second
+				elapsed = time.Now().Sub(start)
+			}
+			heapAllocGb := float64(stats.HeapAlloc) / float64(gb)
+			if maxHeap < heapAllocGb {
+				maxHeap = heapAllocGb
+			}
+			fmt.Printf("\u001b[2K\rGo routines: %d - Heap: %0.3fGb (Max: %0.3fGb) - Time: %v\n",
+				runtime.NumGoroutine(), heapAllocGb, maxHeap, elapsed)
+			fmt.Printf("\u001b[2K\rSorting, please wait ... %s ",
+				frames[spin%10])
+			spin++
+			stdout.Flush()
+		}
+	}
 }

@@ -31,43 +31,43 @@ var bloomCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		target, err := cmd.Flags().GetString(jsonFlagStr)
 		if err != nil {
-			fmt.Printf("Failed to parse --%s flag: %s\n", jsonFlagStr, err)
+			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", jsonFlagStr, err)
 			return
 		}
 		output, err := cmd.Flags().GetString(outputFlagStr)
 		if err != nil {
-			fmt.Printf("Failed to parse --%s flag: %s\n", outputFlagStr, err)
+			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", outputFlagStr, err)
 			return
 		}
 		workers, err := cmd.Flags().GetUint(workersFlagStr)
 		if err != nil {
-			fmt.Printf("Failed to parse --%s flag: %s\n", workersFlagStr, err)
+			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", workersFlagStr, err)
 			return
 		}
 		filterSize, err := cmd.Flags().GetUint(filterSizeFlagStr)
 		if err != nil {
-			fmt.Printf("Failed to parse --%s flag: %s\n", filterSizeFlagStr, err)
+			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", filterSizeFlagStr, err)
 			return
 		}
 		filterHashes, err := cmd.Flags().GetUint(filterHashesFlagStr)
 		if err != nil {
-			fmt.Printf("Failed to parse --%s flag: %s\n", filterHashesFlagStr, err)
+			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", filterHashesFlagStr, err)
 			return
 		}
 		filterLoad, err := cmd.Flags().GetString(filterLoadFlagStr)
 		if err != nil {
-			fmt.Printf("Failed to parse --%s flag: %s\n", filterLoadFlagStr, err)
+			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", filterLoadFlagStr, err)
 			return
 		}
 		filterSave, err := cmd.Flags().GetString(filterSaveFlagStr)
 		if err != nil {
-			fmt.Printf("Failed to parse --%s flag: %s\n", filterSaveFlagStr, err)
+			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", filterSaveFlagStr, err)
 			return
 		}
 
 		targets, err := bloomer.GetTargets(target)
 		if err != nil {
-			fmt.Printf("Target error: %s", err)
+			fmt.Printf(Warn+"Target error: %s", err)
 			return
 		}
 

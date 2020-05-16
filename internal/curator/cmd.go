@@ -30,9 +30,11 @@ const (
 	indexFlagStr  = "index"
 	outputFlagStr = "output"
 
-	workersFlagStr = "workers"
+	// Version flags
+	detailsFlagStr = "details"
 
 	// Filter flags
+	workersFlagStr      = "workers"
 	filterSizeFlagStr   = "filter-size"
 	filterHashesFlagStr = "filter-hashes"
 	filterLoadFlagStr   = "filter-load"
@@ -88,6 +90,9 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
+
+	// Version
+	versionCmd.Flags().BoolP(detailsFlagStr, "d", false, "show additional version details")
 	rootCmd.AddCommand(versionCmd)
 
 	// Bloom

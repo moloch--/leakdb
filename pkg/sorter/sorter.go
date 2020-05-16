@@ -556,23 +556,17 @@ func EntryComparer(a, b interface{}) int {
 }
 
 // Start - Start the sorting process
-func Start(index, output string, maxMemory int, maxGoRoutines int, noTapeCleanup bool) {
+func Start(index, output string, maxMemory int, maxGoRoutines int, tempDir string, noTapeCleanup bool) error {
 
 	indexStat, err := os.Stat(index)
 	if os.IsNotExist(err) || indexStat.IsDir() {
-		fmt.Printf("Index file does not exist %s\n", index)
-		return
+		return err
 	}
 	indexFile, err := os.Open(index)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer indexFile.Close()
-
-	cwd, err := os.Getwd()
-	if err != nil {
-		panic(err)
-	}
 
 	messages := make(chan string)
 	idx := &Index{
@@ -582,14 +576,14 @@ func Start(index, output string, maxMemory int, maxGoRoutines int, noTapeCleanup
 		MaxMemory:     maxMemory * Mb,
 		MaxGoRoutines: maxGoRoutines,
 		Messages:      messages,
-		TapeDir:       filepath.Join(cwd, ".tapes"),
+		TapeDir:       filepath.Join(tempDir, ".tapes"),
 		NoTapeCleanup: noTapeCleanup,
 		Heap:          binaryheap.NewWith(EntryComparer),
 	}
 
 	outputFile, err := os.Create(output)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer outputFile.Close()
 	idx.Output = outputFile
@@ -603,4 +597,5 @@ func Start(index, output string, maxMemory int, maxGoRoutines int, noTapeCleanup
 	done <- true
 	<-done
 
+	return nil
 }

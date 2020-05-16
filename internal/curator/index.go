@@ -33,48 +33,52 @@ var indexCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		target, err := cmd.Flags().GetString(jsonFlagStr)
 		if err != nil {
-			fmt.Printf("Failed to parse --%s flag: %s\n", jsonFlagStr, err)
+			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", jsonFlagStr, err)
 			return
 		}
 		output, err := cmd.Flags().GetString(outputFlagStr)
 		if err != nil {
-			fmt.Printf("Failed to parse --%s flag: %s\n", outputFlagStr, err)
+			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", outputFlagStr, err)
 			return
 		}
 		workers, err := cmd.Flags().GetUint(workersFlagStr)
 		if err != nil {
-			fmt.Printf("Failed to parse --%s flag: %s\n", workersFlagStr, err)
+			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", workersFlagStr, err)
 			return
 		}
 		key, err := cmd.Flags().GetString(keyFlagStr)
 		if err != nil {
-			fmt.Printf("Failed to parse --%s flag: %s\n", keyFlagStr, err)
+			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", keyFlagStr, err)
 			return
 		}
 		if key != "email" && key != "user" && key != "domain" {
-			fmt.Printf("Error --%s must be one of: email, user, or domain\n", keyFlagStr)
+			fmt.Printf(Warn+"Error --%s must be one of: email, user, or domain\n", keyFlagStr)
 			return
 		}
 		noCleanup, err := cmd.Flags().GetBool(noCleanupFlagStr)
 		if err != nil {
-			fmt.Printf("Failed to parse --%s flag: %s\n", noCleanupFlagStr, err)
+			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", noCleanupFlagStr, err)
 			return
 		}
 		tempDir, err := cmd.Flags().GetString(tempDirFlagStr)
 		if err != nil {
-			fmt.Printf("Failed to parse --%s flag: %s\n", tempDirFlagStr, err)
+			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", tempDirFlagStr, err)
 			return
 		}
 		if tempDir == "" {
 			tempDir, err = ioutil.TempDir("", "leakdb_")
 			if err != nil {
-				fmt.Printf("Temp error: %s\n", err)
+				fmt.Printf(Warn+"Temp error: %s\n", err)
 				return
 			}
 		}
 		if !noCleanup {
 			defer os.RemoveAll(tempDir)
 		}
-		indexer.Start(target, output, key, workers, tempDir, noCleanup)
+
+		err = indexer.Start(target, output, key, workers, tempDir, noCleanup)
+		if err != nil {
+			fmt.Printf(Warn+"%s\n", err)
+		}
 	},
 }

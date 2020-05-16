@@ -70,9 +70,13 @@ var bloomCmd = &cobra.Command{
 			fmt.Printf("Target error: %s", err)
 			return
 		}
-		fmt.Printf("Bloom Filter:\n\tSize = %dGb (%d bytes)\n\tHashes = %d\n", filterSize, (filterSize * gb), filterHashes)
-		fmt.Printf("Target: %v\n", targets)
-		fmt.Printf("Output: %s\n", output)
+
+		fmt.Printf(Info + "Bloom Filter:\n")
+		fmt.Printf("\tSize = %dGb (%d bytes)\n", filterSize, (filterSize * gb))
+		fmt.Printf("\tHashes = %d\n", filterHashes)
+		fmt.Println()
+		fmt.Printf(Info+"Target: %v\n", targets)
+		fmt.Printf(Info+"Output: %s\n", output)
 
 		bloomer.Start(targets, output, filterSave, filterLoad, workers, filterSize, filterHashes)
 	},

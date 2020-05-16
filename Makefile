@@ -40,22 +40,22 @@ API_SERVER_OUTFILE=leakdb-server
 API_LAMDBA_OUTFILE=leakdb-lambda
 CURATOR_OUTFILE=leakdb-curator
 
-bin:
+.bin:
 	mkdir -p ./bin/
 
 bin/leakdb-curator: PKG=github.com/moloch--/leakdb/internal/curator
-bin/leakdb-curator: bin
+bin/leakdb-curator: .bin
 	GOOS=$(GOOS) $(GO) build $(LDFLAGS) -o ./bin/$(CURATOR_OUTFILE) ./cmd/curator
 
 bin/leakdb: PKG=github.com/moloch--/leakdb/internal/api-client
-bin/leakdb: bin
+bin/leakdb: .bin
 	GOOS=$(GOOS) $(GO) build $(LDFLAGS) -o ./bin/$(API_CLIENT_OUTFILE) ./cmd/api-client
 
 bin/leakdb-server: PKG=github.com/moloch--/leakdb/internal/api-server
-bin/leakdb-server: bin
+bin/leakdb-server: .bin
 	GOOS=$(GOOS) $(GO) build $(LDFLAGS) -o ./bin/$(API_SERVER_OUTFILE) ./cmd/api-server
 
-bin/leakdb-lambda: bin
+bin/leakdb-lambda: .bin
 	cd aws/lambda/leakdb && GOOS=linux go build -o ./$(API_LAMDBA_OUTFILE) .
 	zip ./bin/$(API_LAMDBA_OUTFILE).zip ./aws/lambda/leakdb/$(API_LAMDBA_OUTFILE)
 

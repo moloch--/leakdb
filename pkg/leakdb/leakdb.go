@@ -42,16 +42,16 @@ var (
 
 // QuerySet - A LeakDB query
 type QuerySet struct {
-	Email  string `json:email`
-	Domain string `json:domain`
-	User   string `json:user`
-	Page   int    `json:page`
+	Email  string `json:"email"`
+	Domain string `json:"domain"`
+	User   string `json:"user"`
+	Page   int    `json:"page"`
 }
 
 // Credential - A result credential
 type Credential struct {
-	Email    string `json:email`
-	Password string `json:password`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 // IsBlank - Password appears to be blank
@@ -94,10 +94,10 @@ func (cred *Credential) IsHash() bool {
 
 // ResultSet - Result of a query
 type ResultSet struct {
-	Count   int          `json:count`
-	Page    int          `json:page`
-	Pages   int          `json:pages`
-	Results []Credential `json:results`
+	Count   int          `json:"count"`
+	Page    int          `json:"page"`
+	Pages   int          `json:"pages"`
+	Results []Credential `json:"results"`
 }
 
 // Client - An HTTP client object

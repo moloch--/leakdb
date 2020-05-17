@@ -1,4 +1,4 @@
-package search
+package searcher
 
 /*
 	---------------------------------------------------------------------
@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 )
 
@@ -66,47 +67,46 @@ func (e *Entry) OffsetInt64() int64 {
 // GetEntry - Get an index entry from file at index
 func GetEntry(indexFile *os.File, index int) *Entry {
 	position := int64(index * EntrySize)
-	fmt.Printf("Reading entry at position %d\n", position)
 	entry := &Entry{
 		Digest: make([]byte, digestSize),
 		Offset: make([]byte, offsetSize),
 	}
 	_, err := indexFile.ReadAt(entry.Digest, position)
-	if err != nil {
-		panic("file read error")
+	if err != nil && err != io.EOF {
+		panic(fmt.Sprintf("file read error as position %d (%s)", position, err))
 	}
 	_, err = indexFile.ReadAt(entry.Offset, position+digestSize)
-	if err != nil {
-		panic("file read error")
+	if err != nil && err != io.EOF {
+		panic(fmt.Sprintf("file read error as position %d (%s)", position+digestSize, err))
 	}
 	return entry
 }
 
-func binaryTreeWalk(needle uint64, indexFile *os.File, numberOfEntries int) (int, error) {
+func binaryTreeWalk(messages chan<- string, needle uint64, indexFile *os.File, numberOfEntries int) (int, error) {
 	lower := 0
 	upper := numberOfEntries - 1 // Zero index
-	fmt.Printf("Needle is %d, lower = %d, upper = %d\n", needle, lower, upper)
+	messages <- fmt.Sprintf("Needle is %d, lower = %d, upper = %d\n", needle, lower, upper)
 	for lower <= upper {
 		middle := lower + ((upper - lower) / 2)
-		fmt.Printf("middle = %d\n", middle)
+		messages <- fmt.Sprintf("middle = %d\n", middle)
 		entryValue := GetEntry(indexFile, middle).Value()
 		if needle < entryValue {
-			fmt.Printf("Needle is lower than %d (%d)\n", middle, entryValue)
+			messages <- fmt.Sprintf("Needle is lower than %d (%d)\n", middle, entryValue)
 			upper = middle - 1
 		} else if entryValue < needle {
-			fmt.Printf("Needle is higher than %d (%d)\n", middle, entryValue)
+			messages <- fmt.Sprintf("Needle is higher than %d (%d)\n", middle, entryValue)
 			lower = middle + 1
 		} else {
-			fmt.Printf("End search at %d\n", entryValue)
+			messages <- fmt.Sprintf("End search at %d\n", entryValue)
 			return middle, nil
 		}
 	}
 	return -1, errors.New("Entry not found")
 }
 
-func binaryTreeSearch(needle uint64, targetFile, indexFile *os.File, numberOfEntries int) []Credential {
+func binaryTreeSearch(messages chan<- string, needle uint64, targetFile, indexFile *os.File, numberOfEntries int) []Credential {
 	results := []Credential{}
-	match, err := binaryTreeWalk(needle, indexFile, numberOfEntries)
+	match, err := binaryTreeWalk(messages, needle, indexFile, numberOfEntries)
 	if err != nil {
 		return []Credential{}
 	}
@@ -115,7 +115,7 @@ func binaryTreeSearch(needle uint64, targetFile, indexFile *os.File, numberOfEnt
 		match-- // Walk backwards and find the first entry
 	}
 	match++
-	fmt.Printf("First match at: %d\n", match)
+	messages <- fmt.Sprintf("First match at: %d\n", match)
 	for GetEntry(indexFile, match).Value() == needle {
 		entry := GetEntry(indexFile, match)
 		targetFile.Seek(entry.OffsetInt64(), 0)
@@ -129,43 +129,38 @@ func binaryTreeSearch(needle uint64, targetFile, indexFile *os.File, numberOfEnt
 	return results
 }
 
-func linearSearch(needle uint64, targetFile, indexFile *os.File, numberOfEntries int) []Credential {
-	results := []Credential{}
-	fmt.Printf("Using linear search ...\n")
-	hit := false
-	for index := 0; index < numberOfEntries; index++ {
-		entry := GetEntry(indexFile, index)
-		if entry.Value() == needle {
-			fmt.Printf("%d == %d\n", entry.Value(), needle)
-			hit = true
-			fmt.Printf("Found a result at index %d (offset: %x)\n", index, entry.OffsetInt64())
-			targetFile.Seek(entry.OffsetInt64(), 0)
-			reader := bufio.NewReader(targetFile)
-			line, _ := reader.ReadString('\n')
-			fmt.Printf("Read: %s\n", line)
-			var cred Credential
-			json.Unmarshal([]byte(line), &cred)
-			results = append(results, cred)
-		} else if hit {
-			break // We reached the end of all matches
-		}
-	}
-	return results
-}
-
-// Find - Fine a value in the index file
-func Find(value string, targetFile, indexFile *os.File, numberOfEntries int, linear bool) []Credential {
+func find(messages chan<- string, value string, targetFile, indexFile *os.File, numberOfEntries int) ([]Credential, error) {
 	digest := sha256.Sum256([]byte(value))
 	buf := []byte{0, 0, 0, 0, 0, 0, 0, 0}
 	copy(buf, digest[:digestSize])
 	needle := binary.LittleEndian.Uint64(buf)
+	messages <- fmt.Sprintf("Finding %s -> %x\n", value, buf)
+	results := binaryTreeSearch(messages, needle, targetFile, indexFile, numberOfEntries)
+	return results, nil
+}
 
-	fmt.Printf("Finding %s -> %x\n", value, buf)
-	var results []Credential
-	if linear {
-		results = linearSearch(needle, targetFile, indexFile, numberOfEntries)
-	} else {
-		results = binaryTreeSearch(needle, targetFile, indexFile, numberOfEntries)
+// Start - Fine a value in the index file
+func Start(messages chan<- string, value string, target string, index string) ([]Credential, error) {
+	targetStat, err := os.Stat(target)
+	if os.IsNotExist(err) || targetStat.IsDir() {
+		return nil, err
 	}
-	return results
+	targetFile, err := os.OpenFile(target, os.O_RDONLY, 0600)
+	if err != nil {
+		return nil, err
+	}
+	defer targetFile.Close()
+
+	indexStat, err := os.Stat(index)
+	if os.IsNotExist(err) || indexStat.IsDir() {
+		return nil, err
+	}
+	indexFile, err := os.OpenFile(index, os.O_RDONLY, 0600)
+	if err != nil {
+		return nil, err
+	}
+	defer indexFile.Close()
+
+	numberOfEntries := int(indexStat.Size() / EntrySize)
+	return find(messages, value, targetFile, indexFile, numberOfEntries)
 }

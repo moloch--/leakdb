@@ -55,14 +55,9 @@ func (w *Worker) start() {
 		for {
 			select {
 			case line := <-w.Queue:
-				w.BloomMutex.RLock()
-				exists := w.Bloom.TestString(line)
-				if exists {
-					w.BloomMutex.Lock()
-					w.Bloom.AddString(line)
-					w.BloomMutex.Unlock()
-				}
-				w.BloomMutex.RUnlock()
+				w.BloomMutex.Lock()
+				exists := w.Bloom.TestAndAddString(line)
+				w.BloomMutex.Unlock()
 				if !exists {
 					w.OutputMutex.Lock()
 					w.Output.WriteString(fmt.Sprintf("%s\n", line))

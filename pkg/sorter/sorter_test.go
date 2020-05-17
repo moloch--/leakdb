@@ -61,22 +61,10 @@ func TestSorterSmallEmail(t *testing.T) {
 	testSort(t, "../../test/small-email-unsorted.idx")
 }
 
-func TestSorterLargeEmail(t *testing.T) {
-	testSort(t, "../../test/large-email-unsorted.idx")
-}
-
 func TestSorterSmallUser(t *testing.T) {
 	testSort(t, "../../test/small-user-unsorted.idx")
 }
 
-func TestSorterLargeUser(t *testing.T) {
-	testSort(t, "../../test/large-user-unsorted.idx")
-}
-
 func TestSorterSmallDomain(t *testing.T) {
 	testSort(t, "../../test/small-domain-unsorted.idx")
-}
-
-func TestSorterLargeDomain(t *testing.T) {
-	testSort(t, "../../test/large-domain-unsorted.idx")
 }

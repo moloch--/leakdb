@@ -63,7 +63,6 @@ func TestBloomerLarge(t *testing.T) {
 	t.Logf("Scanning %s ...", output.Name())
 	for scanner.Scan() {
 		line := scanner.Text()
-		t.Log(line)
 		if err := scanner.Err(); err != nil {
 			t.Errorf("reading input: %s", err)
 			return

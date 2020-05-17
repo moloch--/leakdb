@@ -23,7 +23,7 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Build
-      run: make
+      run: make linux
 
     - name: Test
-      run: go test -v ./pkg/...
+      run: go test ./pkg/...

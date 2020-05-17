@@ -42,6 +42,7 @@ const (
 
 	digestSize = 6
 	offsetSize = 6
+	entrySize  = digestSize + offsetSize
 )
 
 // Worker - Worker thread

@@ -104,7 +104,8 @@ func init() {
 	rootCmd.AddCommand(versionCmd)
 
 	// Auto
-	autoCmd.Flags().StringP(configFlagStr, "c", "", "specify config file")
+	autoCmd.Flags().StringP(configFlagStr, "c", "curator.conf", "specify config file")
+	autoCmd.Flags().StringP(generateFlagStr, "g", "curator.conf", "generate a default config")
 	rootCmd.AddCommand(autoCmd)
 
 	// Bloom

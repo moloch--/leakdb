@@ -86,7 +86,6 @@ var autoCmd = &cobra.Command{
 			fmt.Printf(Warn+"Failed to read config %s\n", err)
 			return
 		}
-
 		autoConf := &AutoConfig{}
 		err = json.Unmarshal(data, autoConf)
 		if err != nil {
@@ -130,7 +129,7 @@ func defaultConf(generate string) error {
 		},
 	}
 
-	data, err := json.Marshal(conf)
+	data, err := json.MarshalIndent(conf, "", "    ")
 	if err != nil {
 		return err
 	}
@@ -142,7 +141,7 @@ func auto(conf *AutoConfig) error {
 	// Check input & output locations
 	stat, err := os.Stat(conf.InputDir)
 	if os.IsNotExist(err) {
-		return err
+		return fmt.Errorf("Input dir (%s) %s", conf.InputDir, err)
 	}
 	if !stat.IsDir() {
 		return errors.New("input_dir must be a directory")

@@ -8,7 +8,6 @@ import (
 )
 
 func TestBloomerSmall(t *testing.T) {
-
 	targets := []string{"../../test/small.json"}
 	output, err := ioutil.TempFile("", "output-sm.json")
 	if err != nil {
@@ -17,7 +16,7 @@ func TestBloomerSmall(t *testing.T) {
 	defer os.Remove(output.Name())
 
 	// Bloom file
-	err = Start(targets, output.Name(), "", "", 1, 2, 8)
+	err = Start(targets, output.Name(), "", "", 1, 1, 4)
 	if err != nil {
 		t.Errorf("Bloomer failed: %s", err)
 	}
@@ -42,11 +41,9 @@ func TestBloomerSmall(t *testing.T) {
 		t.Errorf("Bloomer did not return 50 lines as expected (%d)", len(lines))
 		return
 	}
-
 }
 
 func TestBloomerLarge(t *testing.T) {
-
 	targets := []string{"../../test/large.json"}
 	output, err := ioutil.TempFile("", "output-lg.json")
 	if err != nil {
@@ -55,7 +52,7 @@ func TestBloomerLarge(t *testing.T) {
 	defer os.Remove(output.Name())
 
 	// Bloom file
-	err = Start(targets, output.Name(), "", "", 1, 2, 8)
+	err = Start(targets, output.Name(), "", "", 1, 1, 4)
 	if err != nil {
 		t.Errorf("Bloomer failed: %s", err)
 	}
@@ -80,5 +77,4 @@ func TestBloomerLarge(t *testing.T) {
 		t.Errorf("Bloomer did not return 8000 lines as expected (%d)", len(lines))
 		return
 	}
-
 }

@@ -41,6 +41,7 @@ For example, for sorting 900 megabytes of data using only 100 megabytes of RAM:
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -296,6 +297,9 @@ func (idx *Index) Sort() {
 	outputBuf := make([]Entry, 0)
 	count := 0
 	mod := int(float64(idx.Size) / 100.0)
+	if mod == 0 {
+		mod = 1 // For small values mod can be 0 after integer math
+	}
 	for {
 		value, okay := idx.Heap.Pop()
 		count++
@@ -476,28 +480,6 @@ func qsort(entries []Entry) {
 	return
 }
 
-func checkSort(messages chan<- string, idx *Index, verbose bool) {
-	messages <- "Checking sort ... "
-	if idx.Info.Size()%entrySize != 0 {
-		messages <- "\nWarning: File size is irregular!\n"
-	}
-	for index := 0; index < idx.Size-1; index++ {
-		entry := idx.Get(index)
-		if verbose {
-			messages <- fmt.Sprintf("%09d - [%d : %v]\n", index, entry.Value(), entry.Offset)
-		}
-		nextEntry := idx.Get(index + 1)
-		if nextEntry.Value() < entry.Value() {
-			if verbose {
-				messages <- fmt.Sprintf("%09d - [%d : %v]\n", index, nextEntry.Value(), nextEntry.Offset)
-			}
-			messages <- "\nIndex is not sorted correctly!\n"
-			return
-		}
-	}
-	messages <- "sorted!\n"
-}
-
 // EntryComparer - Compares entries in an index
 func EntryComparer(a, b interface{}) int {
 	aAsserted := a.(Entry)
@@ -514,11 +496,55 @@ func EntryComparer(a, b interface{}) int {
 	}
 }
 
+// CheckSort - Check if an index is sorted
+func CheckSort(messages chan<- string, index string, verbose bool) (bool, error) {
+
+	indexStat, err := os.Stat(index)
+	if os.IsNotExist(err) || indexStat.IsDir() {
+		return false, err
+	}
+	indexFile, err := os.Open(index)
+	if err != nil {
+		return false, err
+	}
+	defer indexFile.Close()
+
+	idx := &Index{
+		file:     indexFile,
+		Info:     indexStat,
+		Messages: messages,
+	}
+
+	messages <- "Checking sort ... "
+	if idx.Info.Size()%entrySize != 0 {
+		messages <- "\nWarning: File size is irregular!\n"
+	}
+	for index := 0; index < idx.Size-1; index++ {
+		entry := idx.Get(index)
+		if verbose {
+			messages <- fmt.Sprintf("%09d - [%d : %v]\n", index, entry.Value(), entry.Offset)
+		}
+		nextEntry := idx.Get(index + 1)
+		if nextEntry.Value() < entry.Value() {
+			if verbose {
+				messages <- fmt.Sprintf("%09d - [%d : %v]\n", index, nextEntry.Value(), nextEntry.Offset)
+			}
+			messages <- "\nIndex is not sorted correctly!\n"
+			return false, nil
+		}
+	}
+	messages <- "sorted!\n"
+	return true, nil
+}
+
 // Start - Start the sorting process
 func Start(messages chan<- string, index, output string, maxMemory int, maxGoRoutines int, tempDir string, noTapeCleanup bool) error {
 	indexStat, err := os.Stat(index)
-	if os.IsNotExist(err) || indexStat.IsDir() {
+	if os.IsNotExist(err) {
 		return err
+	}
+	if indexStat.IsDir() || indexStat.Size() == 0 {
+		return errors.New("Invalid index file: target is directory or empty file")
 	}
 	indexFile, err := os.Open(index)
 	if err != nil {

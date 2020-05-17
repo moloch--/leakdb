@@ -48,7 +48,13 @@ var sortCmd = &cobra.Command{
 			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", outputFlagStr, err)
 			return
 		}
+		if output == "" {
+			output = fmt.Sprintf("%s_sorted.idx", index)
+		}
 		maxMemory, err := cmd.Flags().GetUint(maxMemoryFlagStr)
+		if maxMemory < 1 {
+			maxMemory = 1
+		}
 		noCleanup, err := cmd.Flags().GetBool(noCleanupFlagStr)
 		if err != nil {
 			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", noCleanupFlagStr, err)

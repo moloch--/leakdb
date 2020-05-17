@@ -50,6 +50,10 @@ const (
 	maxMemoryFlagStr = "max-memory"
 	checkFlagStr     = "check"
 
+	// Search flags
+	valueFlagStr   = "value"
+	verboseFlagStr = "verbose"
+
 	// ANSI Colors
 	normal    = "\033[0m"
 	black     = "\033[30m"
@@ -116,11 +120,18 @@ func init() {
 
 	// Sorter
 	sortCmd.Flags().StringP(indexFlagStr, "i", "", "index file to sort")
-	sortCmd.Flags().UintP(maxMemoryFlagStr, "m", 0, "max memory per CPU core (not exact)")
+	sortCmd.Flags().StringP(outputFlagStr, "o", "", "output index file")
+	sortCmd.Flags().UintP(maxMemoryFlagStr, "m", 1024, "max memory in MBs per CPU core (not exact)")
 	sortCmd.Flags().StringP(tempDirFlagStr, "T", "", "directory for temp files (default: cwd)")
 	sortCmd.Flags().BoolP(noCleanupFlagStr, "c", false, "cleanup temp file(s)")
-
 	rootCmd.AddCommand(sortCmd)
+
+	// Search
+	searchCmd.Flags().StringP(indexFlagStr, "i", "", "index file to search")
+	searchCmd.Flags().StringP(jsonFlagStr, "j", "", "original json file")
+	searchCmd.Flags().StringP(valueFlagStr, "v", "", "value to search for")
+	searchCmd.Flags().BoolP(verboseFlagStr, "V", false, "verbose output")
+	rootCmd.AddCommand(searchCmd)
 }
 
 // Execute - Execute the root command

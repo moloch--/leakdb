@@ -33,6 +33,10 @@ const (
 	// Version flags
 	detailsFlagStr = "details"
 
+	// Auto flags
+	configFlagStr   = "conf"
+	generateFlagStr = "generate"
+
 	// Filter flags
 	workersFlagStr      = "workers"
 	filterSizeFlagStr   = "filter-size"
@@ -98,6 +102,10 @@ func init() {
 	// Version
 	versionCmd.Flags().BoolP(detailsFlagStr, "d", false, "show additional version details")
 	rootCmd.AddCommand(versionCmd)
+
+	// Auto
+	autoCmd.Flags().StringP(configFlagStr, "c", "", "specify config file")
+	rootCmd.AddCommand(autoCmd)
 
 	// Bloom
 	bloomCmd.Flags().StringP(jsonFlagStr, "j", "", "target input directory of file(s)")

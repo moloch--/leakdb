@@ -112,7 +112,6 @@ func (t *Tape) Save() {
 		}
 	}
 	t.Entries = nil
-	// runtime.GC() // Force GC after large dealloc
 }
 
 // Prefetch - Prefetch t.MergeSize elements from position in tape
@@ -246,6 +245,7 @@ func (idx *Index) Sort() {
 	numberOfTapes := ceilDivideInt(idx.Size, tapeSize)             // Total number of tapes we need
 	memPerTape := ceilDivideInt(idx.MaxMemory, numberOfTapes+1)    // Size in bytes
 	mergeBufLen := ceilDivideInt(memPerTape, entrySize)            // Len of slice
+
 	idx.Messages <- fmt.Sprintf("Max Memory: %d bytes, CPU Cores: %d, Memory Per Core: %d",
 		idx.MaxMemory, runtime.NumCPU(), memPerWorker)
 	idx.Messages <- fmt.Sprintf("Tape Size: %d, Number of Tapes: %d, Memory Per Tape: %d",
@@ -516,7 +516,6 @@ func EntryComparer(a, b interface{}) int {
 
 // Start - Start the sorting process
 func Start(messages chan<- string, index, output string, maxMemory int, maxGoRoutines int, tempDir string, noTapeCleanup bool) error {
-
 	indexStat, err := os.Stat(index)
 	if os.IsNotExist(err) || indexStat.IsDir() {
 		return err
@@ -538,7 +537,6 @@ func Start(messages chan<- string, index, output string, maxMemory int, maxGoRou
 		NoTapeCleanup: noTapeCleanup,
 		Heap:          binaryheap.NewWith(EntryComparer),
 	}
-
 	outputFile, err := os.Create(output)
 	if err != nil {
 		return err

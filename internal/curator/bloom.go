@@ -19,6 +19,7 @@ package curator
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/moloch--/leakdb/pkg/bloomer"
 	"github.com/spf13/cobra"
@@ -62,6 +63,11 @@ var bloomCmd = &cobra.Command{
 		filterSave, err := cmd.Flags().GetString(filterSaveFlagStr)
 		if err != nil {
 			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", filterSaveFlagStr, err)
+			return
+		}
+
+		if _, err = os.Stat(target); os.IsNotExist(err) {
+			fmt.Printf(Warn+"Target error: %s", err)
 			return
 		}
 

@@ -231,7 +231,7 @@ func ceilDivideInt(a, b int) int {
 // Sort - Sorts the index
 func (idx *Index) Sort() {
 
-	err := os.MkdirAll(idx.TapeDir, os.ModePerm)
+	err := os.MkdirAll(idx.TapeDir, 0700)
 	if err != nil {
 		panic(err)
 	}
@@ -293,7 +293,7 @@ func (idx *Index) Sort() {
 	}
 	idx.PopulateHeap()
 
-	idx.Messages <- fmt.Sprintf("Merging tapes, please wait ...")
+	idx.Messages <- "Merging tapes, please wait ..."
 	outputBuf := make([]Entry, 0)
 	count := 0
 	mod := int(float64(idx.Size) / 100.0)

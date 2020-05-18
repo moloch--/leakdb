@@ -23,6 +23,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/moloch--/leakdb/api"
 	"github.com/moloch--/leakdb/pkg/leakdb"
 	"github.com/spf13/cobra"
 )
@@ -141,7 +142,7 @@ func parseOutputFlags(cmd *cobra.Command) (string, *OutputConfig, error) {
 	return save, config, nil
 }
 
-func genericQueryCommand(cmd *cobra.Command, querySet *leakdb.QuerySet) {
+func genericQueryCommand(cmd *cobra.Command, querySet *api.QuerySet) {
 	page, err := parsePaginationFlags(cmd)
 	if err != nil {
 		return
@@ -175,7 +176,7 @@ func genericQueryCommand(cmd *cobra.Command, querySet *leakdb.QuerySet) {
 	}
 }
 
-func saveToFile(save string, conf *OutputConfig, results *leakdb.ResultSet) {
+func saveToFile(save string, conf *OutputConfig, results *api.ResultSet) {
 	saveFile, err := os.OpenFile(save, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
 		fmt.Printf("Failed to save results: %s\n", err)
@@ -208,7 +209,7 @@ func saveToFile(save string, conf *OutputConfig, results *leakdb.ResultSet) {
 	fmt.Printf("done!\n")
 }
 
-func display(conf *OutputConfig, results *leakdb.ResultSet) {
+func display(conf *OutputConfig, results *api.ResultSet) {
 	if results.Count == 0 {
 		fmt.Println("No results for query")
 		return

@@ -18,7 +18,7 @@ package apiclient
 */
 
 import (
-	"github.com/moloch--/leakdb/pkg/leakdb"
+	"github.com/moloch--/leakdb/api"
 	"github.com/spf13/cobra"
 )
 
@@ -27,7 +27,7 @@ var emailCmd = &cobra.Command{
 	Short: "Query email",
 	Long:  `Query LeakDB for all passwords associated with an email`,
 	Run: func(cmd *cobra.Command, args []string) {
-		genericQueryCommand(cmd, &leakdb.QuerySet{
+		genericQueryCommand(cmd, &api.QuerySet{
 			Email: args[0],
 		})
 	},

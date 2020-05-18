@@ -26,79 +26,15 @@ import (
 
 	"net/http"
 	"net/url"
-	"regexp"
 	"time"
+
+	"github.com/moloch--/leakdb/api"
 )
 
 const (
 	jsonContentType = "application/json"
 	apiKeyHeader    = "x-api-key"
 )
-
-var (
-	hexPattern = regexp.MustCompile(`^[0-9a-fA-F]+$`)
-	b64Pattern = regexp.MustCompile(`^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$`)
-)
-
-// QuerySet - A LeakDB query
-type QuerySet struct {
-	Email  string `json:"email"`
-	Domain string `json:"domain"`
-	User   string `json:"user"`
-	Page   int    `json:"page"`
-}
-
-// Credential - A result credential
-type Credential struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
-// IsBlank - Password appears to be blank
-func (cred *Credential) IsBlank() bool {
-
-	if len(cred.Password) == 0 {
-		return true
-	}
-
-	// Some dumps contain hardcoded 'blank' values
-	if cred.Password == "xxx" {
-		return true
-	}
-
-	return false
-}
-
-// IsHash - Password *appears* to a hash
-func (cred *Credential) IsHash() bool {
-
-	// I'm not aware of any common hashes that would be less than 8 chars
-	if len(cred.Password) < 8 {
-		return false
-	}
-
-	// Min length based on hex-encoded MD5 or higher
-	hexMatched := hexPattern.MatchString(cred.Password)
-	if hexMatched && 32 <= len(cred.Password) {
-		return true
-	}
-
-	// Min length based on b64-encoded MD5 (minus padding) or higher
-	b64Matched := b64Pattern.MatchString(cred.Password)
-	if b64Matched && 22 <= len(cred.Password) {
-		return true
-	}
-
-	return false
-}
-
-// ResultSet - Result of a query
-type ResultSet struct {
-	Count   int          `json:"count"`
-	Page    int          `json:"page"`
-	Pages   int          `json:"pages"`
-	Results []Credential `json:"results"`
-}
 
 // Client - An HTTP client object
 type Client struct {
@@ -115,7 +51,7 @@ type ClientHTTPConfig struct {
 }
 
 // Query - Perform a LeakDB query
-func (client *Client) Query(querySet *QuerySet) (*ResultSet, error) {
+func (client *Client) Query(querySet *api.QuerySet) (*api.ResultSet, error) {
 
 	body, err := json.Marshal(querySet)
 	if err != nil {
@@ -139,7 +75,7 @@ func (client *Client) Query(querySet *QuerySet) (*ResultSet, error) {
 	if err != nil {
 		return nil, err
 	}
-	resultSet := &ResultSet{}
+	resultSet := &api.ResultSet{}
 	if err := json.Unmarshal(bodyBytes, resultSet); err != nil {
 		return nil, err
 	}
@@ -147,7 +83,7 @@ func (client *Client) Query(querySet *QuerySet) (*ResultSet, error) {
 }
 
 // QueryAll - Query for all results
-func (client *Client) QueryAll(querySet QuerySet) (*ResultSet, error) {
+func (client *Client) QueryAll(querySet api.QuerySet) (*api.ResultSet, error) {
 	return nil, nil
 }
 

@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/moloch--/leakdb/api"
 	"github.com/moloch--/leakdb/pkg/searcher"
 )
 
@@ -58,14 +59,14 @@ func getTestServer(t *testing.T, messages chan string) *httptest.Server {
 			t.Errorf("Failed to read request body %s", err)
 			return
 		}
-		query := &QuerySet{}
+		query := &api.QuerySet{}
 		err = json.Unmarshal(body, query)
 		if err != nil {
 			t.Errorf("Failed to decode request body %s", err)
 			return
 		}
 
-		resultSet := &ResultSet{}
+		resultSet := &api.ResultSet{}
 		var results []searcher.Credential
 		if query.Email != "" {
 			results, err = searcher.Start(messages, query.Email, largeJSON, largeEmailIndex)
@@ -93,9 +94,9 @@ func getTestServer(t *testing.T, messages chan string) *httptest.Server {
 		resultSet.Page = 0
 		resultSet.Pages = 1
 		resultSet.Count = len(results)
-		resultSet.Results = []Credential{}
+		resultSet.Results = []api.Credential{}
 		for _, result := range results {
-			resultSet.Results = append(resultSet.Results, Credential{
+			resultSet.Results = append(resultSet.Results, api.Credential{
 				Email:    result.Email,
 				Password: result.Password,
 			})
@@ -123,7 +124,7 @@ func TestLeakDBEmailQuery(t *testing.T) {
 	}
 
 	for _, cred := range largeCreds {
-		query := &QuerySet{Email: cred.Email}
+		query := &api.QuerySet{Email: cred.Email}
 		resultSet, err := client.Query(query)
 		if err != nil {
 			t.Errorf("Client response error %s", err)
@@ -157,7 +158,7 @@ func TestLeakDBUserQuery(t *testing.T) {
 	}
 
 	for _, cred := range largeCreds {
-		query := &QuerySet{User: cred.User}
+		query := &api.QuerySet{User: cred.User}
 		resultSet, err := client.Query(query)
 		if err != nil {
 			t.Errorf("Client response error %s", err)
@@ -191,7 +192,7 @@ func TestLeakDBDomainQuery(t *testing.T) {
 	}
 
 	for _, cred := range largeCreds {
-		query := &QuerySet{Domain: cred.Domain}
+		query := &api.QuerySet{Domain: cred.Domain}
 		resultSet, err := client.Query(query)
 		if err != nil {
 			t.Errorf("Client response error %s", err)

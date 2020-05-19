@@ -38,16 +38,34 @@ const (
 	lineBufferSize = 4096
 )
 
+// BloomFilter - Tracks a single bloom job
+type BloomFilter struct {
+	workers []Worker
+}
+
+// Progress - Returns items bloomed and number of duplicates
+func (b *BloomFilter) Progress() (int, int) {
+	count := 0
+	duplicates := 0
+	for _, worker := range b.workers {
+		count += worker.Count
+		duplicates += worker.CountDuplicates
+	}
+	return count, duplicates
+}
+
 // Worker - Worker thread
 type Worker struct {
-	ID          int
-	Queue       <-chan string
-	Quit        chan bool
-	Bloom       *bloom.BloomFilter
-	BloomMutex  *sync.RWMutex
-	Wg          *sync.WaitGroup
-	OutputMutex *sync.Mutex
-	Output      *os.File
+	ID              int
+	Queue           <-chan string
+	Quit            chan bool
+	Bloom           *bloom.BloomFilter
+	BloomMutex      *sync.RWMutex
+	Wg              *sync.WaitGroup
+	OutputMutex     *sync.Mutex
+	Output          *os.File
+	Count           int
+	CountDuplicates int
 }
 
 func (w *Worker) start() {
@@ -55,6 +73,7 @@ func (w *Worker) start() {
 		for {
 			select {
 			case line := <-w.Queue:
+				w.Count++
 				w.BloomMutex.Lock()
 				exists := w.Bloom.TestAndAddString(line)
 				w.BloomMutex.Unlock()
@@ -62,6 +81,8 @@ func (w *Worker) start() {
 					w.OutputMutex.Lock()
 					w.Output.WriteString(fmt.Sprintf("%s\n", line))
 					w.OutputMutex.Unlock()
+				} else {
+					w.CountDuplicates++
 				}
 			case <-w.Quit:
 				w.Wg.Done()

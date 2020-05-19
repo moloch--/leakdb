@@ -113,7 +113,7 @@ func init() {
 	bloomCmd.Flags().StringP(outputFlagStr, "o", "", "output json file")
 	bloomCmd.Flags().UintP(workersFlagStr, "w", uint(runtime.NumCPU()), "number of worker threads")
 	bloomCmd.Flags().UintP(filterSizeFlagStr, "s", 8, "bloom filter size in GBs")
-	bloomCmd.Flags().UintP(filterHashesFlagStr, "f", 4, "number of bloom filter hash functions")
+	bloomCmd.Flags().UintP(filterHashesFlagStr, "f", 14, "number of bloom filter hash functions")
 	bloomCmd.Flags().StringP(filterLoadFlagStr, "L", "", "load existing bloom filter from saved file")
 	bloomCmd.Flags().StringP(filterSaveFlagStr, "S", "", "save bloom filter to file when complete")
 	rootCmd.AddCommand(bloomCmd)

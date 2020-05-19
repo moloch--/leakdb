@@ -109,7 +109,7 @@ func defaultConf(generate string) error {
 		Verbose:   false,
 		Bloom: &BloomConfig{
 			FilterSize:   8,
-			FilterHashes: 6,
+			FilterHashes: 14,
 			Workers:      workers,
 			FilterLoad:   "",
 			FilterSave:   "",

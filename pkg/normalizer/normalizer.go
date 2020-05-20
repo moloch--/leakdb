@@ -19,47 +19,67 @@ package normalizer
 
 import (
 	"bufio"
+	"encoding/json"
 	"io"
+	"io/ioutil"
 	"os"
+	"path"
+	"path/filepath"
+	"strings"
 )
+
+// Entry - A single entry
+type Entry struct {
+	Email    string `json:"email"`
+	User     string `json:"user"`
+	Domain   string `json:"domain"`
+	Password string `json:"password"`
+}
 
 // Normalize - Normalizer job
 type Normalize struct {
-	format     Format
-	target     string
-	output     string
-	recursive  bool
-	skipPrefix string
-	skipSuffix string
+	Format     Format
+	Targets    []string
+	Output     *os.File
+	Recursive  bool
+	SkipPrefix string
+	SkipSuffix string
+
+	target      string
+	targetCount int
 }
 
-// Start - Start the normalizer
-func Start(format Format, target string, output string, recursive bool, skipPrefix, skipSuffix string) (*Normalize, error) {
-
-	normalizer := &Normalize{
-		format:     format,
-		target:     target,
-		output:     output,
-		recursive:  recursive,
-		skipPrefix: skipPrefix,
-		skipSuffix: skipSuffix,
-	}
-
-	return normalizer, nil
+// GetStatus - Return the current target file and line number
+func (n *Normalize) GetStatus() (string, int) {
+	return n.target, n.targetCount
 }
 
-func lineQueue(targets []string, lines chan<- string) error {
+func (n *Normalize) lineQueue(lines chan<- string) {
 	defer close(lines)
-	for _, target := range targets {
-		if _, err := os.Stat(target); os.IsNotExist(err) {
-			return err
+	for _, target := range n.Targets {
+		fileInfo, err := os.Stat(target)
+		if os.IsNotExist(err) {
+			panic(err)
 		}
+		if fileInfo.IsDir() {
+			continue
+		}
+
 		file, err := os.Open(target)
 		if err != nil {
-			return err
+			panic(err)
 		}
 		defer file.Close()
 
+		if n.SkipPrefix != "" && strings.HasPrefix(target, n.SkipPrefix) {
+			continue
+		}
+		if n.SkipSuffix != "" && strings.HasSuffix(target, n.SkipSuffix) {
+			continue
+		}
+
+		n.target = target
+		n.targetCount = 0
 		reader := bufio.NewReader(file)
 		for {
 			line, err := reader.ReadString('\n')
@@ -68,10 +88,95 @@ func lineQueue(targets []string, lines chan<- string) error {
 				break
 			}
 			if err != nil {
-				return err
+				panic(err)
 			}
+			n.targetCount++
 			lines <- line
 		}
 	}
-	return nil
+}
+
+// GetNormalizer - Start the normalizer
+func GetNormalizer(format Format, target string, output string, recursive bool, skipPrefix, skipSuffix string) (*Normalize, error) {
+	targets, err := GetTargets(target, recursive)
+	outputFile, err := os.OpenFile(output, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0600)
+	if err != nil {
+		return nil, err
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &Normalize{
+		Format:     format,
+		Targets:    targets,
+		Output:     outputFile,
+		Recursive:  recursive,
+		SkipPrefix: skipPrefix,
+		SkipSuffix: skipSuffix,
+	}, nil
+}
+
+// Start - Start the normalization process
+func (n *Normalize) Start(normalize *Normalize) {
+
+	defer n.Output.Close()
+
+	lines := make(chan string)
+	go normalize.lineQueue(lines)
+
+	for line := range lines {
+		email, user, domain, password, err := normalize.Format.Normalize(line)
+		if err != nil {
+			continue
+		}
+		data, err := json.Marshal(&Entry{
+			Email:    email,
+			User:     user,
+			Domain:   domain,
+			Password: password,
+		})
+		if err != nil {
+			panic(err)
+		}
+		n.Output.Write(data)
+		n.Output.Write([]byte("\n"))
+	}
+}
+
+// GetTargets - Get targets from target directory
+func GetTargets(target string, recursive bool) ([]string, error) {
+	targetStat, err := os.Stat(target)
+	if err != nil {
+		return []string{}, err
+	}
+	targets := []string{}
+	switch mode := targetStat.Mode(); {
+	case mode.IsDir():
+		if recursive {
+			err = filepath.Walk(target, func(currentPath string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+				targets = append(targets, path.Join(currentPath, info.Name()))
+				return nil
+			})
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			files, err := ioutil.ReadDir(target)
+			if err != nil {
+				return nil, err
+			}
+			for _, file := range files {
+				if err != nil || file.IsDir() {
+					continue
+				}
+				targets = append(targets, filepath.Join(target, file.Name()))
+			}
+		}
+	case mode.IsRegular():
+		targets = []string{target}
+	}
+	return targets, nil
 }

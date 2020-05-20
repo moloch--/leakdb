@@ -8,7 +8,7 @@ LeakDB normalizes data sets, uses a configurable [bloom filter](https://en.wikip
 
 ### Install
 
-Download the latest [release](https://github.com/moloch--/leakdb/releases), or use `go get -u https://github.com/moloch--/leakdb`
+Download the latest [release](https://github.com/moloch--/leakdb/releases) or use `go get -u https://github.com/moloch--/leakdb`
 
 ### Usage
 

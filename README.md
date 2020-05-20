@@ -14,7 +14,6 @@ Download the latest [release](https://github.com/moloch--/leakdb/releases) or us
 
 See the [wiki](https://github.com/moloch--/leakdb/wiki) for detailed usage.
 
-
 ### Compile From Source
 
 Just run `make` files will be put in `./bin`

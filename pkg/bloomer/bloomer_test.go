@@ -8,7 +8,7 @@ import (
 )
 
 func TestBloomerSmall(t *testing.T) {
-	targets := []string{"../../test/small.json"}
+
 	output, err := ioutil.TempFile("", "output-sm.json")
 	if err != nil {
 		t.Errorf("temp file error %s", err)
@@ -16,9 +16,13 @@ func TestBloomerSmall(t *testing.T) {
 	defer os.Remove(output.Name())
 
 	// Bloom file
-	err = Start(targets, output.Name(), "", "", 1, 1, 4)
+	bloom, err := GetBloomer("../../test/small.json", output.Name(), "", "", 1, 1, 4)
 	if err != nil {
-		t.Errorf("Bloomer failed: %s", err)
+		t.Errorf("GetBloomer failed: %s", err)
+	}
+	err = bloom.Start()
+	if err != nil {
+		t.Errorf("Bloom failed: %s", err)
 	}
 
 	output.Seek(0, 0)
@@ -44,7 +48,7 @@ func TestBloomerSmall(t *testing.T) {
 }
 
 func TestBloomerLarge(t *testing.T) {
-	targets := []string{"../../test/large.json"}
+
 	output, err := ioutil.TempFile("", "output-lg.json")
 	if err != nil {
 		t.Errorf("temp file error %s", err)
@@ -52,9 +56,13 @@ func TestBloomerLarge(t *testing.T) {
 	defer os.Remove(output.Name())
 
 	// Bloom file
-	err = Start(targets, output.Name(), "", "", 1, 1, 4)
+	bloom, err := GetBloomer("../../test/large.json", output.Name(), "", "", 1, 1, 4)
 	if err != nil {
-		t.Errorf("Bloomer failed: %s", err)
+		t.Errorf("GetBloomer failed: %s", err)
+	}
+	err = bloom.Start()
+	if err != nil {
+		t.Errorf("Bloom failed: %s", err)
 	}
 
 	output.Seek(0, 0)

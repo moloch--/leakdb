@@ -26,7 +26,7 @@ import (
 
 var normalizeCmd = &cobra.Command{
 	Use:   "normalize",
-	Short: "Index a target file",
+	Short: "Normalize data sets",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 		target, err := cmd.Flags().GetString(targetFlagStr)

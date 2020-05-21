@@ -38,13 +38,19 @@ const (
 	lineBufferSize = 4096
 )
 
-// BloomFilter - Tracks a single bloom job
-type BloomFilter struct {
-	workers []Worker
+// Bloom - Tracks a single bloom job
+type Bloom struct {
+	outputFile  *os.File
+	workers     []*Worker
+	bloomFilter *bloom.BloomFilter
+	targets     []string
+	queue       chan string
+	save        string
+	wg          *sync.WaitGroup
 }
 
 // Progress - Returns items bloomed and number of duplicates
-func (b *BloomFilter) Progress() (int, int) {
+func (b *Bloom) Progress() (int, int) {
 	count := 0
 	duplicates := 0
 	for _, worker := range b.workers {
@@ -52,6 +58,42 @@ func (b *BloomFilter) Progress() (int, int) {
 		duplicates += worker.CountDuplicates
 	}
 	return count, duplicates
+}
+
+// Start - Start the bloom filter workers
+func (b *Bloom) Start() error {
+
+	defer b.outputFile.Close()
+
+	lines := make(chan string, lineBufferSize)
+	go lineQueue(b.targets, lines)
+
+	for _, worker := range b.workers {
+		worker.start()
+	}
+
+	for line := range lines {
+		line = strings.TrimSpace(line)
+		if 0 < len(line) {
+			b.queue <- line
+		}
+	}
+	for _, worker := range b.workers {
+		worker.Quit <- true
+	}
+
+	// Optionally save bloom filter
+	if 0 < len(b.save) {
+		saveFile, err := os.Create(b.save)
+		if err != nil {
+			return err
+		}
+		defer saveFile.Close()
+		b.bloomFilter.WriteTo(saveFile)
+	}
+
+	b.wg.Wait()
+	return nil
 }
 
 // Worker - Worker thread
@@ -70,6 +112,7 @@ type Worker struct {
 
 func (w *Worker) start() {
 	go func() {
+		w.Wg.Add(1)
 		for {
 			select {
 			case line := <-w.Queue:
@@ -92,27 +135,28 @@ func (w *Worker) start() {
 	}()
 }
 
-// Start - Start the bloomer
-func Start(targets []string, output, saveFilter, loadFilter string, maxWorkers, filterSize, filterHashes uint) error {
+// GetBloomer - Start the bloomer
+func GetBloomer(target string, output, saveFilter, loadFilter string, maxWorkers, filterSize, filterHashes uint) (*Bloom, error) {
 	if maxWorkers < 1 {
 		maxWorkers = 1
 	}
 
-	lines := make(chan string, lineBufferSize)
-	go lineQueue(targets, lines)
+	targets, err := getTargets(target)
+	if err != nil {
+		return nil, err
+	}
 
 	outputFile, err := os.OpenFile(output, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer outputFile.Close()
 
 	// Create filter and optionally load content from previously saved file
 	bloomFilter := bloom.New(uint(filterSize*gb), filterHashes)
 	if _, err := os.Stat(loadFilter); !os.IsNotExist(err) {
 		loadFile, err := os.Open(loadFilter)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		defer loadFile.Close()
 		bloomFilter.ReadFrom(loadFile)
@@ -122,48 +166,35 @@ func Start(targets []string, output, saveFilter, loadFilter string, maxWorkers, 
 	quit := make(chan bool)
 	outputMutex := sync.Mutex{}
 	bloomMutex := sync.RWMutex{}
-	wg := sync.WaitGroup{}
+	wg := &sync.WaitGroup{}
+
 	workers := []*Worker{}
 	for id := 1; id <= int(maxWorkers); id++ {
-		wg.Add(1)
 		worker := &Worker{
 			ID:          id,
 			Queue:       queue,
 			Quit:        quit,
 			Bloom:       bloomFilter,
 			BloomMutex:  &bloomMutex,
-			Wg:          &wg,
 			OutputMutex: &outputMutex,
 			Output:      outputFile,
+			Wg:          wg,
 		}
-		worker.start()
 		workers = append(workers, worker)
 	}
-	for line := range lines {
-		line = strings.TrimSpace(line)
-		if 0 < len(line) {
-			queue <- line
-		}
-	}
-	for _, worker := range workers {
-		worker.Quit <- true
-	}
-	wg.Wait()
 
-	// Optionally save bloom filter
-	if 0 < len(saveFilter) {
-		saveFile, err := os.Create(saveFilter)
-		if err != nil {
-			return err
-		}
-		defer saveFile.Close()
-		bloomFilter.WriteTo(saveFile)
-	}
-	return nil
+	return &Bloom{
+		targets:     targets,
+		bloomFilter: bloomFilter,
+		outputFile:  outputFile,
+		workers:     workers,
+		queue:       queue,
+		wg:          wg,
+	}, nil
 }
 
-// GetTargets - Get targets from target directory
-func GetTargets(target string) ([]string, error) {
+// getTargets - Get targets from target directory
+func getTargets(target string) ([]string, error) {
 	targetStat, err := os.Stat(target)
 	if err != nil {
 		return []string{}, err

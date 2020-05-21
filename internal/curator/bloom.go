@@ -71,19 +71,20 @@ var bloomCmd = &cobra.Command{
 			return
 		}
 
-		targets, err := bloomer.GetTargets(target)
-		if err != nil {
-			fmt.Printf(Warn+"Target error: %s", err)
-			return
-		}
-
 		fmt.Printf(Info + "Bloom Filter:\n")
 		fmt.Printf("\tSize = %dGb (%d bytes)\n", filterSize, (filterSize * gb))
 		fmt.Printf("\tHashes = %d\n", filterHashes)
 		fmt.Println()
-		fmt.Printf(Info+"Target: %v\n", targets)
+		fmt.Printf(Info+"Target: %v\n", target)
 		fmt.Printf(Info+"Output: %s\n", output)
 
-		bloomer.Start(targets, output, filterSave, filterLoad, workers, filterSize, filterHashes)
+		bloom, err := bloomer.GetBloomer(target, output, filterSave, filterLoad, workers, filterSize, filterHashes)
+		if err != nil {
+			fmt.Printf(Warn+"Bloom error %s", err)
+		}
+		err = bloom.Start()
+		if err != nil {
+			fmt.Printf(Warn+"Bloom error %s", err)
+		}
 	},
 }

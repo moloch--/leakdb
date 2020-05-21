@@ -167,18 +167,17 @@ func auto(conf *AutoConfig) error {
 	}
 
 	// *** Bloom ***
-	targets, err := bloomer.GetTargets(conf.InputDir)
-	if err != nil {
-		return err
-	}
-
 	fmt.Printf("Applying bloom filter ...")
 	bloomOutput := conf.Bloom.Output
 	if bloomOutput == "" {
 		bloomOutput = fmt.Sprintf("%s.json", path.Dir(conf.InputDir))
 	}
-	err = bloomer.Start(targets, bloomOutput, conf.Bloom.FilterSave, conf.Bloom.FilterLoad,
+	bloom, err := bloomer.GetBloomer(conf.InputDir, bloomOutput, conf.Bloom.FilterSave, conf.Bloom.FilterLoad,
 		conf.Bloom.Workers, conf.Bloom.FilterSize, conf.Bloom.FilterHashes)
+	if err != nil {
+		return err
+	}
+	err = bloom.Start()
 	if err != nil {
 		return err
 	}

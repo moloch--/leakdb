@@ -83,15 +83,20 @@ func (n *Normalize) lineQueue(lines chan<- string) {
 		reader := bufio.NewReader(file)
 		for {
 			line, err := reader.ReadString('\n')
+			line = strings.TrimSpace(line)
 			if err == io.EOF {
-				lines <- line
+				if 0 < len(line) {
+					lines <- line
+				}
 				break
 			}
 			if err != nil {
 				panic(err)
 			}
 			n.targetCount++
-			lines <- line
+			if 0 < len(line) {
+				lines <- line
+			}
 		}
 	}
 }

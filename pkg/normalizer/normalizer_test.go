@@ -1,6 +1,11 @@
 package normalizer
 
-import "testing"
+import (
+	"bytes"
+	"io/ioutil"
+	"os"
+	"testing"
+)
 
 /*
 	---------------------------------------------------------------------
@@ -18,6 +23,11 @@ import "testing"
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 	----------------------------------------------------------------------
 */
+
+var (
+	sample = []byte(`{"email":"kbeeho0@51.la","user":"kbeeho0","domain":"51.la","password":"Q96oJ4J"}
+`)
+)
 
 func TestGetTargets(t *testing.T) {
 	files, err := getTargets("../../test/a", false)
@@ -44,4 +54,29 @@ func TestGetTargets(t *testing.T) {
 		return
 	}
 
+}
+
+func TestNormalize(t *testing.T) {
+	target := "../../test/a"
+	output, err := ioutil.TempFile("", "leakdb_test_")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer os.Remove(output.Name())
+	format := Formats[colonNewline]
+	normalize, err := GetNormalizer(format, target, output.Name(), false, "", "")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	normalize.Start()
+	data, err := ioutil.ReadFile(output.Name())
+	if err != nil {
+		t.Error(err)
+	}
+	if !bytes.Equal(data, sample) {
+		t.Errorf("Data does not equal sample:\n  Data: %s\nSample: %s", data, sample)
+		return
+	}
 }

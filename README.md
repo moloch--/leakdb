@@ -6,9 +6,9 @@ LeakDB uses a configurable [bloom filter](https://en.wikipedia.org/wiki/Bloom_fi
 
 ![Go](https://github.com/moloch--/leakdb/workflows/Go/badge.svg?branch=master) [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-### Bring Your Own Data
+### ⚠️ Bring Your Own Data
 
-⚠️ __Note:__ You must provide your own data, these tools are provided as-is and not distributed with any data sets public or otherwise.
+You must provide your own data, these tools are provided as-is and not distributed with any data sets public or otherwise.
 
 ### Install
 

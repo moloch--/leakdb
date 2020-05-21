@@ -37,6 +37,13 @@ const (
 	configFlagStr   = "conf"
 	generateFlagStr = "generate"
 
+	// Normalize flags
+	targetFlagStr     = "target"
+	formatFlagStr     = "format"
+	recursiveFlagStr  = "recursive"
+	skipPrefixFlagStr = "skip-prefix"
+	skipSuffixFlagStr = "skip-suffix"
+
 	// Filter flags
 	workersFlagStr      = "workers"
 	filterSizeFlagStr   = "filter-size"
@@ -107,6 +114,15 @@ func init() {
 	autoCmd.Flags().StringP(configFlagStr, "c", "", "specify config file")
 	autoCmd.Flags().StringP(generateFlagStr, "g", "", "generate a default config")
 	rootCmd.AddCommand(autoCmd)
+
+	// Normalize
+	normalizeCmd.Flags().StringP(targetFlagStr, "t", "", "target directory of files")
+	normalizeCmd.Flags().StringP(formatFlagStr, "f", "", "target format (see detailed help)")
+	normalizeCmd.Flags().StringP(outputFlagStr, "o", "", "output json file of normalized data")
+	normalizeCmd.Flags().BoolP(recursiveFlagStr, "r", false, "recursively scan directory")
+	normalizeCmd.Flags().StringP(skipPrefixFlagStr, "p", "", "skip files with prefix")
+	normalizeCmd.Flags().StringP(skipSuffixFlagStr, "s", "", "skip files with suffix")
+	rootCmd.AddCommand(normalizeCmd)
 
 	// Bloom
 	bloomCmd.Flags().StringP(jsonFlagStr, "j", "", "target input directory of file(s)")

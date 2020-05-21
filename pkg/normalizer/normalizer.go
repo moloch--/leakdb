@@ -117,15 +117,15 @@ func GetNormalizer(format Format, target string, output string, recursive bool, 
 }
 
 // Start - Start the normalization process
-func (n *Normalize) Start(normalize *Normalize) {
+func (n *Normalize) Start() {
 
 	defer n.Output.Close()
 
 	lines := make(chan string)
-	go normalize.lineQueue(lines)
+	go n.lineQueue(lines)
 
 	for line := range lines {
-		email, user, domain, password, err := normalize.Format.Normalize(line)
+		email, user, domain, password, err := n.Format.Normalize(line)
 		if err != nil {
 			continue
 		}

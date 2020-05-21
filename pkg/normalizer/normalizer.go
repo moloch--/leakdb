@@ -96,26 +96,6 @@ func (n *Normalize) lineQueue(lines chan<- string) {
 	}
 }
 
-// GetNormalizer - Start the normalizer
-func GetNormalizer(format Format, target string, output string, recursive bool, skipPrefix, skipSuffix string) (*Normalize, error) {
-	targets, err := GetTargets(target, recursive)
-	outputFile, err := os.OpenFile(output, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0600)
-	if err != nil {
-		return nil, err
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &Normalize{
-		Format:     format,
-		Targets:    targets,
-		Output:     outputFile,
-		Recursive:  recursive,
-		SkipPrefix: skipPrefix,
-		SkipSuffix: skipSuffix,
-	}, nil
-}
-
 // Start - Start the normalization process
 func (n *Normalize) Start() {
 
@@ -143,8 +123,28 @@ func (n *Normalize) Start() {
 	}
 }
 
-// GetTargets - Get targets from target directory
-func GetTargets(target string, recursive bool) ([]string, error) {
+// GetNormalizer - Start the normalizer
+func GetNormalizer(format Format, target string, output string, recursive bool, skipPrefix, skipSuffix string) (*Normalize, error) {
+	targets, err := getTargets(target, recursive)
+	outputFile, err := os.OpenFile(output, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0600)
+	if err != nil {
+		return nil, err
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &Normalize{
+		Format:     format,
+		Targets:    targets,
+		Output:     outputFile,
+		Recursive:  recursive,
+		SkipPrefix: skipPrefix,
+		SkipSuffix: skipSuffix,
+	}, nil
+}
+
+// getTargets - Get targets from target directory
+func getTargets(target string, recursive bool) ([]string, error) {
 	targetStat, err := os.Stat(target)
 	if err != nil {
 		return []string{}, err
@@ -157,7 +157,9 @@ func GetTargets(target string, recursive bool) ([]string, error) {
 				if err != nil {
 					return err
 				}
-				targets = append(targets, path.Join(currentPath, info.Name()))
+				if !info.IsDir() {
+					targets = append(targets, path.Join(currentPath, info.Name()))
+				}
 				return nil
 			})
 			if err != nil {

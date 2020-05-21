@@ -1,5 +1,7 @@
 package normalizer
 
+import "testing"
+
 /*
 	---------------------------------------------------------------------
 	This program is free software: you can redistribute it and/or modify
@@ -16,3 +18,30 @@ package normalizer
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 	----------------------------------------------------------------------
 */
+
+func TestGetTargets(t *testing.T) {
+	files, err := getTargets("../../test/a", false)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if len(files) != 1 {
+		t.Errorf("Unexpected number of targets %d", len(files))
+		return
+	}
+	if files[0] != "../../test/a/a.txt" {
+		t.Errorf("Unexpected target '%s'", files[0])
+		return
+	}
+
+	files, err = getTargets("../../test/a", true)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if len(files) != 2 {
+		t.Errorf("Unexpected number of recursive targets %d: %v", len(files), files)
+		return
+	}
+
+}

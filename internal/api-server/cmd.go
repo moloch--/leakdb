@@ -45,7 +45,7 @@ var rootCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(versionCmd)
 
-	rootCmd.PersistentFlags().StringP(hostFlagStr, "h", "", "Bind host")
+	rootCmd.PersistentFlags().StringP(hostFlagStr, "H", "", "Bind host")
 	rootCmd.PersistentFlags().Uint16P(portFlagStr, "p", 8888, "Bind port")
 
 	rootCmd.PersistentFlags().StringP(jsonFlagStr, "j", "", "JSON data set file")
@@ -53,6 +53,7 @@ func init() {
 	rootCmd.PersistentFlags().StringP(emailIndexFlagStr, "e", "", "Email index file")
 	rootCmd.PersistentFlags().StringP(domainIndexFlagStr, "d", "", "Domain index file")
 
+	rootCmd.PersistentFlags().BoolP(tlsFlagStr, "s", false, "Enable TLS")
 	rootCmd.PersistentFlags().StringP(certFlagStr, "c", "", "TLS certificate")
 	rootCmd.PersistentFlags().StringP(keyFlagStr, "k", "", "TLS private key")
 }

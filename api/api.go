@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"regexp"
 
@@ -89,44 +90,62 @@ type Server struct {
 	EmailIndex  string
 	UserIndex   string
 	DomainIndex string
+
+	TLSCertificate string
+	TLSKey         string
+}
+
+// StartTLS - Start TLS server
+func (s *Server) StartTLS(host string, port uint16) {
+	bind := fmt.Sprintf("%s:%d", host, port)
+	http.HandleFunc("/", s.SearchHandler)
+	err := http.ListenAndServeTLS(bind, s.TLSCertificate, s.TLSKey, nil)
+	if err != nil {
+		log.Fatal("ListenAndServeTLS: ", err)
+	}
+}
+
+// Start - Start server
+func (s *Server) Start(host string, port uint16) {
+	bind := fmt.Sprintf("%s:%d", host, port)
+	http.HandleFunc("/", s.SearchHandler)
+	err := http.ListenAndServe(bind, nil)
+	if err != nil {
+		log.Fatal("ListenAndServe: ", err)
+	}
 }
 
 // SearchHandler - Process search requests
-func (s *Server) SearchHandler(resp http.ResponseWriter, req *http.Request) (int, error) {
+func (s *Server) SearchHandler(resp http.ResponseWriter, req *http.Request) {
 
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
-		return BadRequest, fmt.Errorf("Failed to read request body %s", err)
+		msg := fmt.Sprintf("Failed to read request body %s", err)
+		http.Error(resp, msg, http.StatusBadRequest)
+		return
 	}
 	query := &QuerySet{}
 	err = json.Unmarshal(body, query)
 	if err != nil {
-		return BadRequest, fmt.Errorf("Failed to decode request body %s", err)
+		msg := fmt.Sprintf("Failed to decode request %s", err)
+		http.Error(resp, msg, http.StatusBadRequest)
+		return
 	}
 
 	resultSet := &ResultSet{}
 	var results []searcher.Credential
 	if query.Email != "" {
-		results, err = searcher.Start(s.Messages, query.Email, s.JSONFile, s.EmailIndex)
-		if err != nil {
-			return BadRequest, fmt.Errorf("Email search failed %s", err)
-
-		}
+		results, err = s.emailSearch(query)
 	} else if query.User != "" {
-		results, err = searcher.Start(s.Messages, query.User, s.JSONFile, s.UserIndex)
-		if err != nil {
-			return BadRequest, fmt.Errorf("User search failed %s", err)
-
-		}
+		results, err = s.userSearch(query)
 	} else if query.Domain != "" {
-		results, err = searcher.Start(s.Messages, query.Domain, s.JSONFile, s.DomainIndex)
-		if err != nil {
-			return BadRequest, fmt.Errorf("Domain search failed %s", err)
-
-		}
+		results, err = s.domainSearch(query)
 	} else {
-		return BadRequest, errors.New("Invalid query: does not contain valid key/value")
-
+		err = errors.New("Invalid query: does not contain valid key")
+	}
+	if err != nil {
+		http.Error(resp, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	resultSet.Page = 0
@@ -141,9 +160,30 @@ func (s *Server) SearchHandler(resp http.ResponseWriter, req *http.Request) (int
 	}
 	data, err := json.Marshal(resultSet)
 	if err != nil {
-		return BadRequest, fmt.Errorf("Failed to serialized result set %s", err)
+		msg := fmt.Sprintf("Failed to serialized result set %s", err)
+		http.Error(resp, msg, http.StatusBadRequest)
+	} else {
+		resp.Write(data)
 	}
-	resp.Write(data)
+}
 
-	return 200, nil
+func (s *Server) userSearch(query *QuerySet) ([]searcher.Credential, error) {
+	if s.UserIndex == "" {
+		return nil, errors.New("No user index file")
+	}
+	return searcher.Start(s.Messages, query.User, s.JSONFile, s.UserIndex)
+}
+
+func (s *Server) emailSearch(query *QuerySet) ([]searcher.Credential, error) {
+	if s.EmailIndex == "" {
+		return nil, errors.New("No email index file")
+	}
+	return searcher.Start(s.Messages, query.Email, s.JSONFile, s.EmailIndex)
+}
+
+func (s *Server) domainSearch(query *QuerySet) ([]searcher.Credential, error) {
+	if s.DomainIndex == "" {
+		return nil, errors.New("No domain index file")
+	}
+	return searcher.Start(s.Messages, query.Domain, s.JSONFile, s.DomainIndex)
 }

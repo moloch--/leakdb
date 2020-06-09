@@ -12,7 +12,7 @@ __⚠️ Important:__ You must provide your own data, these tools are provided a
 
 ### Install
 
-Download the latest [release](https://github.com/moloch--/leakdb/releases) or use `go get -u https://github.com/moloch--/leakdb`
+Download the latest [release](https://github.com/moloch--/leakdb/releases)
 
 ### Usage
 

@@ -17,6 +17,8 @@ package main
 	----------------------------------------------------------------------
 */
 
-func main() {
+import apiserver "github.com/moloch--/leakdb/internal/api-server"
 
+func main() {
+	apiserver.Execute()
 }

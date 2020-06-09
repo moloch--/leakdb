@@ -17,9 +17,7 @@ package main
 	----------------------------------------------------------------------
 */
 
-import (
-	"github.com/moloch--/leakdb/internal/curator"
-)
+import "github.com/moloch--/leakdb/internal/curator"
 
 func main() {
 	curator.Execute()

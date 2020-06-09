@@ -14,7 +14,7 @@ func startServer(cmd *cobra.Command, args []string) {
 	defer close(server.Messages)
 	host, port, err := getHostPort(cmd, args)
 	if err != nil {
-		fmt.Println("%s", err)
+		fmt.Println(err)
 		return
 	}
 	server.Start(host, port)

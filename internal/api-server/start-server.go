@@ -10,6 +10,9 @@ import (
 
 func startServer(cmd *cobra.Command, args []string) {
 	server := getServer(cmd, args)
+	if server == nil {
+		return
+	}
 	server.Messages = getNullChannel()
 	defer close(server.Messages)
 	host, port, err := getHostPort(cmd, args)
@@ -22,6 +25,9 @@ func startServer(cmd *cobra.Command, args []string) {
 
 func startTLSServer(cmd *cobra.Command, args []string) {
 	server := getServer(cmd, args)
+	if server == nil {
+		return
+	}
 	server.Messages = getNullChannel()
 	defer close(server.Messages)
 	cert, key, err := getTLSConfig(cmd, args)

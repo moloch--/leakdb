@@ -13,8 +13,12 @@ const (
 	emailIndexFlagStr  = "index-email"
 	domainIndexFlagStr = "index-domain"
 
-	certFlagStr = "tls-cert"
-	keyFlagStr  = "tls-key"
+	tlsFlagStr  = "enable-tls"
+	certFlagStr = "cert"
+	keyFlagStr  = "key"
+
+	hostFlagStr = "host"
+	portFlagStr = "port"
 
 	// Version
 	detailsFlagStr = "details"
@@ -22,13 +26,27 @@ const (
 
 var rootCmd = &cobra.Command{
 	Use:   "leakdb-server",
-	Short: "LeakDB api server",
-	Long:  ``,
-	Run:   startServer,
+	Short: "LeakDB API server",
+	Long:  `Start the LeakDB API server`,
+	Run: func(cmd *cobra.Command, args []string) {
+		enableTLS, err := cmd.Flags().GetBool(tlsFlagStr)
+		if err != nil {
+			fmt.Printf("Failed to parse --%s flag: %s\n", tlsFlagStr, err)
+			return
+		}
+		if enableTLS {
+			startTLSServer(cmd, args)
+		} else {
+			startServer(cmd, args)
+		}
+	},
 }
 
 func init() {
 	rootCmd.AddCommand(versionCmd)
+
+	rootCmd.PersistentFlags().StringP(hostFlagStr, "h", "", "Bind host")
+	rootCmd.PersistentFlags().Uint16P(portFlagStr, "p", 8888, "Bind port")
 
 	rootCmd.PersistentFlags().StringP(jsonFlagStr, "j", "", "JSON data set file")
 	rootCmd.PersistentFlags().StringP(userIndexFlagStr, "u", "", "User index file")

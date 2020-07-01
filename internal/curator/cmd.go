@@ -58,8 +58,9 @@ const (
 	tempDirFlagStr = "temp"
 
 	// Sort flags
-	maxMemoryFlagStr = "max-memory"
-	checkFlagStr     = "check"
+	maxMemoryFlagStr     = "max-memory"
+	checkFlagStr         = "check"
+	maxGoRoutinesFlagStr = "max-goroutines"
 
 	// Search flags
 	valueFlagStr   = "value"
@@ -109,8 +110,20 @@ func init() {
 	// Version
 	versionCmd.Flags().BoolP(detailsFlagStr, "d", false, "show additional version details")
 	rootCmd.AddCommand(versionCmd)
-	rootCmd.Flags().StringP(configFlagStr, "c", "", "specify config file")
-	rootCmd.Flags().StringP(generateFlagStr, "g", "", "generate a default config")
+
+	rootCmd.Flags().StringP(tempDirFlagStr, "T", "", "directory for temp files (default: cwd)")
+
+	rootCmd.Flags().StringP(jsonFlagStr, "j", "", "input file/directory of normalized json file(s)")
+	rootCmd.Flags().StringP(outputFlagStr, "o", "", "output directory")
+
+	rootCmd.Flags().UintP(workersFlagStr, "w", uint(runtime.NumCPU()), "max number of workers")
+	rootCmd.Flags().UintP(filterSizeFlagStr, "s", 8, "bloom filter size in GBs")
+	rootCmd.Flags().UintP(filterHashesFlagStr, "f", 14, "number of bloom filter hash functions")
+	rootCmd.Flags().StringP(filterLoadFlagStr, "L", "", "load existing bloom filter from saved file")
+	rootCmd.Flags().StringP(filterSaveFlagStr, "S", "", "save bloom filter to file when complete")
+
+	rootCmd.Flags().UintP(maxMemoryFlagStr, "m", 1024, "max memory in MBs per worker (not exact!)")
+	rootCmd.Flags().UintP(maxGoRoutinesFlagStr, "g", 10000, "max number of goroutines")
 
 	// Normalize
 	normalizeCmd.Flags().StringP(targetFlagStr, "t", "", "target directory of files")
@@ -122,7 +135,7 @@ func init() {
 	rootCmd.AddCommand(normalizeCmd)
 
 	// Bloom
-	bloomCmd.Flags().StringP(jsonFlagStr, "j", "", "target input directory of file(s)")
+	bloomCmd.Flags().StringP(jsonFlagStr, "j", "", "input directory of normalized json file(s)")
 	bloomCmd.Flags().StringP(outputFlagStr, "o", "", "output json file")
 	bloomCmd.Flags().UintP(workersFlagStr, "w", uint(runtime.NumCPU()), "number of worker threads")
 	bloomCmd.Flags().UintP(filterSizeFlagStr, "s", 8, "bloom filter size in GBs")
@@ -136,23 +149,23 @@ func init() {
 	indexCmd.Flags().StringP(outputFlagStr, "o", "leakdb.idx", "output index file")
 	indexCmd.Flags().UintP(workersFlagStr, "w", uint(runtime.NumCPU()), "number of worker threads")
 	indexCmd.Flags().StringP(keyFlagStr, "k", "email", "index key can be: email, user, or domain")
-	indexCmd.Flags().BoolP(noCleanupFlagStr, "c", false, "cleanup temp file(s)")
+	indexCmd.Flags().BoolP(noCleanupFlagStr, "N", false, "skip cleanup of temp file(s)")
 	indexCmd.Flags().StringP(tempDirFlagStr, "T", "", "directory for temp files (default: cwd)")
 	rootCmd.AddCommand(indexCmd)
 
 	// Sorter
 	sortCmd.Flags().StringP(indexFlagStr, "i", "", "index file to sort")
 	sortCmd.Flags().StringP(outputFlagStr, "o", "", "output index file")
-	sortCmd.Flags().UintP(maxMemoryFlagStr, "m", 1024, "max memory in MBs per CPU core (not exact)")
+	sortCmd.Flags().UintP(maxMemoryFlagStr, "m", 1024, "max memory in MBs per worker (not exact!)")
+	sortCmd.Flags().UintP(maxGoRoutinesFlagStr, "g", 10000, "max goroutines")
 	sortCmd.Flags().StringP(tempDirFlagStr, "T", "", "directory for temp files (default: cwd)")
-	sortCmd.Flags().BoolP(noCleanupFlagStr, "c", false, "cleanup temp file(s)")
+	sortCmd.Flags().BoolP(noCleanupFlagStr, "N", false, "skip cleanup temp file(s)")
 	rootCmd.AddCommand(sortCmd)
 
 	// Search
 	searchCmd.Flags().StringP(indexFlagStr, "i", "", "index file to search")
 	searchCmd.Flags().StringP(jsonFlagStr, "j", "", "original json file")
 	searchCmd.Flags().StringP(valueFlagStr, "v", "", "value to search for")
-	searchCmd.Flags().BoolP(verboseFlagStr, "V", false, "verbose output")
 	rootCmd.AddCommand(searchCmd)
 }
 

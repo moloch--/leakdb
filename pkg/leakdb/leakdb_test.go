@@ -67,21 +67,21 @@ func getTestServer(t *testing.T, messages chan string) *httptest.Server {
 		}
 
 		resultSet := &api.ResultSet{}
-		var results []searcher.Credential
+		var results []*searcher.Credential
 		if query.Email != "" {
-			results, err = searcher.Start(messages, query.Email, largeJSON, largeEmailIndex)
+			results, err = searcher.Start(query.Email, largeJSON, largeEmailIndex)
 			if err != nil {
 				t.Errorf("Email search failed %s", err)
 				return
 			}
 		} else if query.User != "" {
-			results, err = searcher.Start(messages, query.User, largeJSON, largeUserIndex)
+			results, err = searcher.Start(query.User, largeJSON, largeUserIndex)
 			if err != nil {
 				t.Errorf("User search failed %s", err)
 				return
 			}
 		} else if query.Domain != "" {
-			results, err = searcher.Start(messages, query.Domain, largeJSON, largeDomainIndex)
+			results, err = searcher.Start(query.Domain, largeJSON, largeDomainIndex)
 			if err != nil {
 				t.Errorf("Domain search failed %s", err)
 				return

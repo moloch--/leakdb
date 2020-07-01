@@ -30,20 +30,11 @@ const (
 )
 
 func TestSearchHandler(t *testing.T) {
-	null := make(chan string)
-	go func() {
-		for range null {
-		}
-	}()
-	defer close(null)
-
 	server := &Server{
 		JSONFile:    "../test/large-bloomed.json",
 		UserIndex:   "../test/large-user-sorted.idx",
 		EmailIndex:  "../test/large-email-sorted.idx",
 		DomainIndex: "../test/large-domain-sorted.idx",
-
-		Messages: null,
 	}
 	handler := http.HandlerFunc(server.SearchHandler)
 	email, _ := json.Marshal(&QuerySet{Email: "acirlosmg@nsw.gov.au"})

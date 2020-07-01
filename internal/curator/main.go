@@ -2,11 +2,12 @@ package curator
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"path"
+	"path/filepath"
 	"runtime"
 
 	"github.com/moloch--/leakdb/pkg/bloomer"
@@ -30,15 +31,13 @@ type IndexConfig struct {
 	Workers   uint     `json:"workers"`
 	Keys      []string `json:"keys"`
 	NoCleanup bool     `json:"no_cleanup"`
-	TempDir   string   `json:"temp_dir"`
 }
 
 // SortConfig - Sort configuration
 type SortConfig struct {
-	MaxGoRoutines uint   `json:"max_goroutines"`
-	MaxMemory     uint   `json:"max_memory"`
-	NoCleanup     bool   `json:"no_cleanup"`
-	TempDir       string `json:"temp_dir"`
+	MaxGoRoutines uint `json:"max_goroutines"`
+	MaxMemory     uint `json:"max_memory"`
+	NoCleanup     bool `json:"no_cleanup"`
 }
 
 // AutoConfig - A complete config for the auto command
@@ -47,47 +46,108 @@ type AutoConfig struct {
 	Index *IndexConfig `json:"index"`
 	Sort  *SortConfig  `json:"sort"`
 
-	InputDir  string `json:"input_dir"`
+	Input     string `json:"input_dir"`
 	OutputDir string `json:"output_dir"`
 	TempDir   string `json:"temp_dir"`
-	NoCleanup bool   `json:"no_cleanup"`
-	Verbose   bool   `json:"verbose"`
 }
 
 func mainRun(cmd *cobra.Command, args []string) {
-	generate, err := cmd.Flags().GetString(generateFlagStr)
+	cwd, err := os.Getwd()
 	if err != nil {
-		fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", generateFlagStr, err)
-		return
-	}
-	if generate != "" {
-		err := defaultConf(generate)
-		if err != nil {
-			fmt.Printf(Warn+"Failed to generate config %s\n", err)
-		}
+		fmt.Printf(Warn+"%s\n", err)
 		return
 	}
 
-	confFlag, err := cmd.Flags().GetString(configFlagStr)
+	autoConf := &AutoConfig{
+		Bloom: &BloomConfig{},
+		Index: &IndexConfig{NoCleanup: false, Keys: []string{"user", "email", "domain"}},
+		Sort:  &SortConfig{NoCleanup: false},
+	}
+
+	// Workers
+	workers, err := cmd.Flags().GetUint(workersFlagStr)
 	if err != nil {
-		fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", configFlagStr, err)
+		fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", workersFlagStr, err)
 		return
 	}
-	if confFlag == "" {
-		fmt.Printf(Warn+"Missing --%s\n", configFlagStr)
-		return
+	if workers < 1 {
+		workers = 1
 	}
-	data, err := ioutil.ReadFile(confFlag)
+	autoConf.Bloom.Workers = workers
+	autoConf.Index.Workers = workers
+
+	// Bloom Filter Options
+	autoConf.Bloom.FilterSize, err = cmd.Flags().GetUint(filterSizeFlagStr)
 	if err != nil {
-		fmt.Printf(Warn+"Failed to read config %s\n", err)
+		fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", filterSizeFlagStr, err)
 		return
 	}
-	autoConf := &AutoConfig{}
-	err = json.Unmarshal(data, autoConf)
+	autoConf.Bloom.FilterHashes, err = cmd.Flags().GetUint(filterHashesFlagStr)
 	if err != nil {
-		fmt.Printf(Warn+"Failed to parse config %s\n", err)
+		fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", filterHashesFlagStr, err)
 		return
 	}
+	autoConf.Bloom.FilterLoad, err = cmd.Flags().GetString(filterLoadFlagStr)
+	if err != nil {
+		fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", filterLoadFlagStr, err)
+		return
+	}
+	autoConf.Bloom.FilterSave, err = cmd.Flags().GetString(filterSaveFlagStr)
+	if err != nil {
+		fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", filterSaveFlagStr, err)
+		return
+	}
+
+	// Memory/goroutines
+	autoConf.Sort.MaxMemory, err = cmd.Flags().GetUint(maxMemoryFlagStr)
+	if autoConf.Sort.MaxMemory < 1 {
+		autoConf.Sort.MaxMemory = 1
+	}
+	autoConf.Sort.MaxGoRoutines, err = cmd.Flags().GetUint(maxGoRoutinesFlagStr)
+	if autoConf.Sort.MaxGoRoutines < 1 {
+		autoConf.Sort.MaxGoRoutines = 1
+	}
+
+	// Target input/output
+	autoConf.Input, err = cmd.Flags().GetString(jsonFlagStr) // Dir or file of normalized json
+	if err != nil {
+		fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", jsonFlagStr, err)
+		return
+	}
+	autoConf.OutputDir, err = cmd.Flags().GetString(outputFlagStr) // Output dir of indexes
+	if err != nil {
+		fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", outputFlagStr, err)
+		return
+	}
+	if autoConf.OutputDir == "" {
+		autoConf.OutputDir = filepath.Join(cwd, "leakdb")
+	}
+	if _, err = os.Stat(autoConf.OutputDir); os.IsNotExist(err) {
+		err := os.MkdirAll(autoConf.OutputDir, 0700)
+		if err != nil {
+			fmt.Printf(Warn+"Error creating output directory %s", err)
+			return
+		}
+	}
+
+	// Temp Dir
+	autoConf.TempDir, err = cmd.Flags().GetString(tempDirFlagStr)
+	if err != nil {
+		fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", tempDirFlagStr, err)
+		return
+	}
+	dirName := fmt.Sprintf("leakdb-tmp-%d", rand.Intn(999999))
+	if autoConf.TempDir == "" {
+		autoConf.TempDir = filepath.Join(cwd, dirName)
+	} else {
+		autoConf.TempDir = filepath.Join(autoConf.TempDir, dirName)
+	}
+	err = os.MkdirAll(autoConf.TempDir, 0700)
+	if err != nil {
+		fmt.Printf(Warn+"Failed to create temp dir %s", err)
+		return
+	}
+	// defer os.RemoveAll(autoConf.TempDir)
 
 	err = auto(autoConf)
 	if err != nil {
@@ -98,10 +158,9 @@ func mainRun(cmd *cobra.Command, args []string) {
 func defaultConf(generate string) error {
 	workers := uint(runtime.NumCPU())
 	conf := &AutoConfig{
-		InputDir:  "",
+		Input:     "",
 		OutputDir: "",
 		TempDir:   "",
-		Verbose:   false,
 		Bloom: &BloomConfig{
 			FilterSize:   8,
 			FilterHashes: 14,
@@ -114,13 +173,11 @@ func defaultConf(generate string) error {
 			Workers:   workers,
 			Keys:      []string{"email", "user", "domain"},
 			NoCleanup: false,
-			TempDir:   "",
 		},
 		Sort: &SortConfig{
 			MaxGoRoutines: 10000,
 			MaxMemory:     2048,
 			NoCleanup:     false,
-			TempDir:       "",
 		},
 	}
 
@@ -128,47 +185,25 @@ func defaultConf(generate string) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(generate, data, 0600)
+	return ioutil.WriteFile(generate, data, 0644)
 }
 
 func auto(conf *AutoConfig) error {
 	var err error
 	// Check input & output locations
-	stat, err := os.Stat(conf.InputDir)
+	_, err = os.Stat(conf.Input)
 	if os.IsNotExist(err) {
-		return fmt.Errorf("Input dir (%s) %s", conf.InputDir, err)
-	}
-	if !stat.IsDir() {
-		return errors.New("input_dir must be a directory")
-	}
-
-	if _, err = os.Stat(conf.OutputDir); os.IsNotExist(err) {
-		err := os.MkdirAll(conf.OutputDir, 0700)
-		if err != nil {
-			return err
-		}
-	}
-
-	workDir := conf.TempDir
-	if workDir == "" {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return err
-		}
-		workDir, err = ioutil.TempDir(cwd, "leakdb_workdir_")
-		if err != nil {
-			return err
-		}
+		return fmt.Errorf("Input %s %s", conf.Input, err)
 	}
 
 	// *** Bloom ***
 	fmt.Printf("Applying bloom filter ...")
 	bloomOutput := conf.Bloom.Output
 	if bloomOutput == "" {
-		bloomOutput = fmt.Sprintf("%s.json", path.Dir(conf.InputDir))
+		bloomOutput = filepath.Join(conf.TempDir, "bloomed.json")
 	}
-	bloom, err := bloomer.GetBloomer(conf.InputDir, bloomOutput, conf.Bloom.FilterSave, conf.Bloom.FilterLoad,
-		conf.Bloom.Workers, conf.Bloom.FilterSize, conf.Bloom.FilterHashes)
+	bloom, err := bloomer.GetBloomer(conf.Input, bloomOutput, conf.Bloom.FilterSave,
+		conf.Bloom.FilterLoad, conf.Bloom.Workers, conf.Bloom.FilterSize, conf.Bloom.FilterHashes)
 	if err != nil {
 		return err
 	}
@@ -179,61 +214,38 @@ func auto(conf *AutoConfig) error {
 	fmt.Printf("done!\n")
 
 	// *** Index ***
-	fmt.Printf("Computing indexes ...")
 	indexes := []string{}
+	indexTmpDir := filepath.Join(conf.TempDir, "indexer")
 	for _, key := range conf.Index.Keys {
-		tempDir := conf.Index.TempDir
-		if tempDir == "" {
-			tempDir, err = ioutil.TempDir("", "leakdb_")
-			if err != nil {
-				return err
-			}
-		}
-
-		output := path.Join(workDir, fmt.Sprintf("%s-%s.idx", path.Dir(conf.InputDir), key))
+		fmt.Printf("Computing %s index ...", key)
+		output := path.Join(conf.TempDir, fmt.Sprintf("%s-unsorted.idx", key))
 		indexes = append(indexes, output)
-		index, err := indexer.GetIndexer(bloomOutput, output, key, conf.Index.Workers, tempDir, conf.Index.NoCleanup)
+		index, err := indexer.GetIndexer(bloomOutput, output, key, conf.Index.Workers, indexTmpDir, conf.Index.NoCleanup)
 		if err != nil {
 			return err
 		}
-		index.Start()
-	}
-	if !conf.NoCleanup {
-		for _, index := range indexes {
-			defer os.Remove(index)
+		err = index.Start()
+		if err != nil {
+			return err
 		}
+		fmt.Printf("done!\n")
 	}
-	fmt.Printf("done!\n")
+	if !conf.Index.NoCleanup {
+		os.RemoveAll(indexTmpDir)
+	}
 
 	// *** Sort ***
-	fmt.Printf("Sorting indexes ...")
-
-	messages := make(chan string)
-	defer close(messages)
-	go func() {
-		for message := range messages {
-			if conf.Verbose {
-				fmt.Printf(message)
-			}
-		}
-	}()
-
+	sortTmpDir := filepath.Join(conf.TempDir, "sorter")
 	for _, index := range indexes {
+		fmt.Printf("Sorting %s ...", index)
 		output := path.Join(conf.OutputDir, path.Base(index))
-		tempDir := conf.Sort.TempDir
-		if tempDir == "" {
-			tempDir, err = ioutil.TempDir("", "leakdb_")
-			if err != nil {
-				return err
-			}
-		}
-		sort, err := sorter.GetSorter(index, output, int(conf.Sort.MaxMemory), int(conf.Sort.MaxGoRoutines), tempDir, conf.Sort.NoCleanup)
+		sort, err := sorter.GetSorter(index, output, int(conf.Sort.MaxMemory),
+			int(conf.Sort.MaxGoRoutines), sortTmpDir, conf.Sort.NoCleanup)
 		if err != nil {
 			return err
 		}
 		sort.Start()
+		fmt.Printf("done!\n")
 	}
-
-	fmt.Printf("done!\n")
 	return nil
 }

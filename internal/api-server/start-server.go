@@ -30,8 +30,6 @@ func startServer(cmd *cobra.Command, args []string) {
 	if server == nil {
 		return
 	}
-	server.Messages = getNullChannel()
-	defer close(server.Messages)
 	host, port, err := getHostPort(cmd, args)
 	if err != nil {
 		fmt.Println(err)
@@ -45,8 +43,6 @@ func startTLSServer(cmd *cobra.Command, args []string) {
 	if server == nil {
 		return
 	}
-	server.Messages = getNullChannel()
-	defer close(server.Messages)
 	cert, key, err := getTLSConfig(cmd, args)
 	if err != nil {
 		fmt.Println(err)
@@ -148,13 +144,4 @@ func fileExists(filename string) bool {
 		return false
 	}
 	return !info.IsDir()
-}
-
-func getNullChannel() chan string {
-	null := make(chan string)
-	go func() {
-		for range null {
-		}
-	}()
-	return null
 }

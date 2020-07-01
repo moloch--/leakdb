@@ -84,8 +84,6 @@ type ResultSet struct {
 
 // Server - A server object
 type Server struct {
-	Messages chan string
-
 	JSONFile    string
 	EmailIndex  string
 	UserIndex   string
@@ -133,7 +131,7 @@ func (s *Server) SearchHandler(resp http.ResponseWriter, req *http.Request) {
 	}
 
 	resultSet := &ResultSet{}
-	var results []searcher.Credential
+	var results []*searcher.Credential
 	if query.Email != "" {
 		results, err = s.emailSearch(query)
 	} else if query.User != "" {
@@ -167,23 +165,23 @@ func (s *Server) SearchHandler(resp http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (s *Server) userSearch(query *QuerySet) ([]searcher.Credential, error) {
+func (s *Server) userSearch(query *QuerySet) ([]*searcher.Credential, error) {
 	if s.UserIndex == "" {
 		return nil, errors.New("No user index file")
 	}
-	return searcher.Start(s.Messages, query.User, s.JSONFile, s.UserIndex)
+	return searcher.Start(query.User, s.JSONFile, s.UserIndex)
 }
 
-func (s *Server) emailSearch(query *QuerySet) ([]searcher.Credential, error) {
+func (s *Server) emailSearch(query *QuerySet) ([]*searcher.Credential, error) {
 	if s.EmailIndex == "" {
 		return nil, errors.New("No email index file")
 	}
-	return searcher.Start(s.Messages, query.Email, s.JSONFile, s.EmailIndex)
+	return searcher.Start(query.Email, s.JSONFile, s.EmailIndex)
 }
 
-func (s *Server) domainSearch(query *QuerySet) ([]searcher.Credential, error) {
+func (s *Server) domainSearch(query *QuerySet) ([]*searcher.Credential, error) {
 	if s.DomainIndex == "" {
 		return nil, errors.New("No domain index file")
 	}
-	return searcher.Start(s.Messages, query.Domain, s.JSONFile, s.DomainIndex)
+	return searcher.Start(query.Domain, s.JSONFile, s.DomainIndex)
 }

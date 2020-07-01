@@ -62,21 +62,9 @@ var (
 	}
 )
 
-func logChannel(t *testing.T) chan string {
-	messages := make(chan string)
-	go func() {
-		for msg := range messages {
-			t.Log(msg)
-		}
-	}()
-	return messages
-}
-
 func TestSearchSmallEmail(t *testing.T) {
-	messages := logChannel(t)
-	defer close(messages)
 	for _, cred := range smallCreds {
-		results, err := Start(messages, cred.Email, smallJSON, smallEmailIndex)
+		results, err := Start(cred.Email, smallJSON, smallEmailIndex)
 		if err != nil {
 			t.Errorf("Search failed %s", err)
 			return
@@ -86,6 +74,7 @@ func TestSearchSmallEmail(t *testing.T) {
 			return
 		}
 		if results[0].Email != cred.Email || results[0].Password != cred.Password {
+			t.Errorf("Got %v", results[0])
 			t.Error("Search returned wrong result")
 			return
 		}
@@ -93,10 +82,12 @@ func TestSearchSmallEmail(t *testing.T) {
 }
 
 func TestSearchSmallUser(t *testing.T) {
-	messages := logChannel(t)
-	defer close(messages)
 	for _, cred := range smallCreds {
-		results, err := Start(messages, cred.User, smallJSON, smallUserIndex)
+		results, err := Start(cred.User, smallJSON, smallUserIndex)
+		if len(cred.User) == 0 {
+			t.Errorf("Invalid smallCred %s", cred.User)
+			return
+		}
 		if err != nil {
 			t.Errorf("Search failed %s", err)
 			return
@@ -106,6 +97,7 @@ func TestSearchSmallUser(t *testing.T) {
 			return
 		}
 		if results[0].User != cred.User || results[0].Password != cred.Password {
+			t.Errorf("Got %v", results[0])
 			t.Error("Search returned wrong result")
 			return
 		}
@@ -113,10 +105,8 @@ func TestSearchSmallUser(t *testing.T) {
 }
 
 func TestSearchSmallDomain(t *testing.T) {
-	messages := logChannel(t)
-	defer close(messages)
 	for _, cred := range smallCreds {
-		results, err := Start(messages, cred.Domain, smallJSON, smallDomainIndex)
+		results, err := Start(cred.Domain, smallJSON, smallDomainIndex)
 		if err != nil {
 			t.Errorf("Search failed %s", err)
 			return
@@ -126,6 +116,7 @@ func TestSearchSmallDomain(t *testing.T) {
 			return
 		}
 		if results[0].Domain != cred.Domain || results[0].Password != cred.Password {
+			t.Errorf("Got %v", results[0])
 			t.Error("Search returned wrong result")
 			return
 		}
@@ -133,10 +124,8 @@ func TestSearchSmallDomain(t *testing.T) {
 }
 
 func TestSearchLargeEmail(t *testing.T) {
-	messages := logChannel(t)
-	defer close(messages)
 	for _, cred := range largeCreds {
-		results, err := Start(messages, cred.Email, largeJSON, largeEmailIndex)
+		results, err := Start(cred.Email, largeJSON, largeEmailIndex)
 		if err != nil {
 			t.Errorf("Search failed %s", err)
 			return
@@ -146,6 +135,7 @@ func TestSearchLargeEmail(t *testing.T) {
 			return
 		}
 		if results[0].Email != cred.Email || results[0].Password != cred.Password {
+			t.Errorf("Got %v", results[0])
 			t.Error("Search returned wrong result")
 			return
 		}
@@ -153,10 +143,8 @@ func TestSearchLargeEmail(t *testing.T) {
 }
 
 func TestSearchLargeUser(t *testing.T) {
-	messages := logChannel(t)
-	defer close(messages)
 	for _, cred := range largeCreds {
-		results, err := Start(messages, cred.User, largeJSON, largeUserIndex)
+		results, err := Start(cred.User, largeJSON, largeUserIndex)
 		if err != nil {
 			t.Errorf("Search failed %s", err)
 			return
@@ -173,10 +161,8 @@ func TestSearchLargeUser(t *testing.T) {
 }
 
 func TestSearchLargeDomain(t *testing.T) {
-	messages := logChannel(t)
-	defer close(messages)
 	for _, cred := range largeCreds {
-		results, err := Start(messages, cred.Domain, largeJSON, largeDomainIndex)
+		results, err := Start(cred.Domain, largeJSON, largeDomainIndex)
 		if err != nil {
 			t.Errorf("Search failed %s", err)
 			return

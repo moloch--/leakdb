@@ -77,18 +77,12 @@ var sortCmd = &cobra.Command{
 			defer os.RemoveAll(tempDir)
 		}
 
-		start := time.Now()
-		done := make(chan bool)
-		messages := make(chan string)
-		go progress(start, messages, done)
-
-		sorter.Start(messages, index, output, int(maxMemory), maxGoRoutines, tempDir, noCleanup)
-
-		elapsed := time.Now().Sub(start)
-		messages <- fmt.Sprintf("Time elapsed: %v", elapsed)
-		done <- true
-		<-done
-
+		sort, err := sorter.GetSorter(index, output, int(maxMemory), maxGoRoutines, tempDir, noCleanup)
+		if err != nil {
+			fmt.Printf(Warn+"%s\n", err)
+			return
+		}
+		sort.Start()
 	},
 }
 

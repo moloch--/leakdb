@@ -171,35 +171,37 @@ func (t *Tape) IsEndOfTape() bool {
 	return t.Position == t.Size
 }
 
-// Index - An index file
-type Index struct {
-	file          *os.File
+// Sorter - An index file
+type Sorter struct {
+	IndexPath     string
+	Index         *os.File
+	OutputPath    string
 	Output        *os.File
 	Info          os.FileInfo
 	Size          int // Number of entries
 	MaxGoRoutines int // Max number of worker go routines
 	MaxMemory     int // size of buffer in bytes
-	Messages      chan<- string
 	Tapes         []*Tape
 	TapeDir       string
 	NoTapeCleanup bool
 	Heap          *binaryheap.Heap
+	Percent       float64
 }
 
 // Get - Get an index entry at position
-func (idx *Index) Get(index int) Entry {
+func (idx *Sorter) Get(index int) Entry {
 	position := int64(index * entrySize)
 	entry := Entry{
 		Digest: make([]byte, digestSize),
 		Offset: make([]byte, offsetSize),
 	}
-	idx.file.ReadAt(entry.Digest, position)
-	idx.file.ReadAt(entry.Offset, position+digestSize)
+	idx.Index.ReadAt(entry.Digest, position)
+	idx.Index.ReadAt(entry.Offset, position+digestSize)
 	return entry
 }
 
 // PopulateHeap - Populate the heap with lowest values from sorted tapes
-func (idx *Index) PopulateHeap() {
+func (idx *Sorter) PopulateHeap() {
 	for tapeIndex, tape := range idx.Tapes {
 		entry, okay := tape.Pop()
 		if okay {
@@ -210,7 +212,7 @@ func (idx *Index) PopulateHeap() {
 }
 
 // Drain - Drain buffer to file
-func (idx *Index) Drain(outputBuf []Entry) {
+func (idx *Sorter) Drain(outputBuf []Entry) {
 	for _, entry := range outputBuf {
 		_, err := idx.Output.Write(entry.Digest)
 		if err != nil {
@@ -228,10 +230,23 @@ func ceilDivideInt(a, b int) int {
 	return int(math.Ceil(float64(a) / float64(b)))
 }
 
-// Sort - Sorts the index
-func (idx *Index) Sort() {
+// Start - Sorts the index
+func (idx *Sorter) Start() {
+	var err error
 
-	err := os.MkdirAll(idx.TapeDir, 0700)
+	idx.Output, err = os.Create(idx.OutputPath)
+	if err != nil {
+		panic(err)
+	}
+	defer idx.Output.Close()
+
+	idx.Index, err = os.Open(idx.IndexPath)
+	if err != nil {
+		panic(err)
+	}
+	defer idx.Index.Close()
+
+	err = os.MkdirAll(idx.TapeDir, 0700)
 	if err != nil {
 		panic(err)
 	}
@@ -246,11 +261,6 @@ func (idx *Index) Sort() {
 	numberOfTapes := ceilDivideInt(idx.Size, tapeSize)             // Total number of tapes we need
 	memPerTape := ceilDivideInt(idx.MaxMemory, numberOfTapes+1)    // Size in bytes
 	mergeBufLen := ceilDivideInt(memPerTape, entrySize)            // Len of slice
-
-	idx.Messages <- fmt.Sprintf("Max Memory: %d bytes, CPU Cores: %d, Memory Per Core: %d",
-		idx.MaxMemory, runtime.NumCPU(), memPerWorker)
-	idx.Messages <- fmt.Sprintf("Tape Size: %d, Number of Tapes: %d, Memory Per Tape: %d",
-		tapeSize, numberOfTapes, memPerTape)
 
 	wg := sync.WaitGroup{}
 	workers := []*Worker{}
@@ -273,12 +283,9 @@ func (idx *Index) Sort() {
 	}
 
 	for tapeIndex := 0; tapeIndex < numberOfTapes; tapeIndex++ {
-		idx.Messages <- fmt.Sprintf("Loading tape %d of %d ...", tapeIndex+1, numberOfTapes)
 		tape := idx.CreateTape(tapeIndex, tapeSize)
 		tape.MergeSize = mergeBufLen
 		idx.Tapes = append(idx.Tapes, tape)
-		idx.Messages <- fmt.Sprintf("Sorting tape %d of %d (%d entries) ...",
-			tapeIndex+1, numberOfTapes, len(tape.Entries))
 		queue <- tape // Feed tapes to workers
 	}
 	for _, worker := range workers {
@@ -287,13 +294,11 @@ func (idx *Index) Sort() {
 	wg.Wait() // Wait for all quicksorts to complete
 
 	// K-way merge sort using binary heap
-	idx.Messages <- fmt.Sprintf("Buffering %d entries (%d bytes) ...", mergeBufLen, memPerTape)
 	for _, tape := range idx.Tapes {
 		tape.Prefetch(0)
 	}
 	idx.PopulateHeap()
 
-	idx.Messages <- "Merging tapes, please wait ..."
 	outputBuf := make([]Entry, 0)
 	count := 0
 	mod := int(float64(idx.Size) / 100.0)
@@ -304,8 +309,7 @@ func (idx *Index) Sort() {
 		value, okay := idx.Heap.Pop()
 		count++
 		if count%mod == 0 {
-			percent := (float64(count) / float64(idx.Size)) * 100.0
-			idx.Messages <- fmt.Sprintf("Merged %0.f%%", percent)
+			idx.Percent = (float64(count) / float64(idx.Size)) * 100.0
 		}
 		if !okay {
 			panic("Failed to pop value from heap")
@@ -331,7 +335,7 @@ func (idx *Index) Sort() {
 }
 
 // IsMergeCompleted - Returns true if all tapes have ended and heap is size 0
-func (idx *Index) IsMergeCompleted() bool {
+func (idx *Sorter) IsMergeCompleted() bool {
 	for _, tape := range idx.Tapes {
 		if !tape.IsEndOfTape() || 0 < len(tape.Entries) {
 			return false
@@ -344,18 +348,17 @@ func (idx *Index) IsMergeCompleted() bool {
 }
 
 // CreateTape - Creates a tape and loads the entire tap into memory
-func (idx *Index) CreateTape(id int, n int) *Tape {
+func (idx *Sorter) CreateTape(id int, n int) *Tape {
 	tape := &Tape{
 		ID:       id,
 		Dir:      idx.TapeDir,
 		FileName: fmt.Sprintf("%s_%d.tape", idx.Info.Name(), id),
 		Position: 0,
-		Messages: idx.Messages,
 		Entries:  make([]Entry, n),
 	}
 	for entryIndex := 0; entryIndex < n; entryIndex++ {
 		buf := make([]byte, entrySize)
-		_, err := io.ReadAtLeast(idx.file, buf, entrySize)
+		_, err := io.ReadAtLeast(idx.Index, buf, entrySize)
 		if err == io.EOF {
 			// tape.Entries = tape.Entries[:entryIndex]
 			tape.Entries = append([]Entry(nil), tape.Entries[:entryIndex]...)
@@ -509,68 +512,46 @@ func CheckSort(messages chan<- string, index string, verbose bool) (bool, error)
 	}
 	defer indexFile.Close()
 
-	idx := &Index{
-		file:     indexFile,
-		Info:     indexStat,
-		Messages: messages,
+	idx := &Sorter{
+		Index: indexFile,
+		Info:  indexStat,
 	}
 
-	messages <- "Checking sort ... "
 	if idx.Info.Size()%entrySize != 0 {
-		messages <- "\nWarning: File size is irregular!\n"
+		return false, errors.New("Irregular file size")
 	}
 	for index := 0; index < idx.Size-1; index++ {
 		entry := idx.Get(index)
-		if verbose {
-			messages <- fmt.Sprintf("%09d - [%d : %v]\n", index, entry.Value(), entry.Offset)
-		}
 		nextEntry := idx.Get(index + 1)
 		if nextEntry.Value() < entry.Value() {
-			if verbose {
-				messages <- fmt.Sprintf("%09d - [%d : %v]\n", index, nextEntry.Value(), nextEntry.Offset)
-			}
-			messages <- "\nIndex is not sorted correctly!\n"
-			return false, nil
+			msg := fmt.Sprintf("%09d - [%d : %v]\n", index, nextEntry.Value(), nextEntry.Offset)
+			err := fmt.Errorf("Index is not sorted correctly: %s", msg)
+			return false, err
 		}
 	}
-	messages <- "sorted!\n"
 	return true, nil
 }
 
-// Start - Start the sorting process
-func Start(messages chan<- string, index, output string, maxMemory int, maxGoRoutines int, tempDir string, noTapeCleanup bool) error {
+// GetSorter - Start the sorting process
+func GetSorter(index, output string, maxMemory int, maxGoRoutines int, tempDir string, noTapeCleanup bool) (*Sorter, error) {
 	indexStat, err := os.Stat(index)
 	if os.IsNotExist(err) {
-		return err
+		return nil, err
 	}
 	if indexStat.IsDir() || indexStat.Size() == 0 {
-		return errors.New("Invalid index file: target is directory or empty file")
+		return nil, errors.New("Invalid index file: target is directory or empty file")
 	}
-	indexFile, err := os.Open(index)
-	if err != nil {
-		return err
-	}
-	defer indexFile.Close()
 
-	idx := &Index{
-		file:          indexFile,
+	idx := &Sorter{
+		IndexPath:     index,
 		Info:          indexStat,
 		Size:          int(indexStat.Size() / entrySize),
 		MaxMemory:     maxMemory * Mb,
 		MaxGoRoutines: maxGoRoutines,
-		Messages:      messages,
 		TapeDir:       filepath.Join(tempDir, ".tapes"),
 		NoTapeCleanup: noTapeCleanup,
 		Heap:          binaryheap.NewWith(EntryComparer),
+		OutputPath:    output,
 	}
-	outputFile, err := os.Create(output)
-	if err != nil {
-		return err
-	}
-	defer outputFile.Close()
-	idx.Output = outputFile
-
-	idx.Sort()
-
-	return nil
+	return idx, nil
 }

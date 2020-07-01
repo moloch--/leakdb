@@ -232,10 +232,11 @@ func auto(conf *AutoConfig) error {
 				return err
 			}
 		}
-		err = sorter.Start(messages, index, output, int(conf.Sort.MaxMemory), int(conf.Sort.MaxGoRoutines), tempDir, conf.Sort.NoCleanup)
+		sort, err := sorter.GetSorter(index, output, int(conf.Sort.MaxMemory), int(conf.Sort.MaxGoRoutines), tempDir, conf.Sort.NoCleanup)
 		if err != nil {
 			return err
 		}
+		sort.Start()
 	}
 
 	fmt.Printf("done!\n")

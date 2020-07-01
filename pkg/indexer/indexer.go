@@ -51,7 +51,8 @@ type Worker struct {
 	Wg         *sync.WaitGroup
 	TargetPath string
 	OutputPath string
-	Verbose    bool
+	LineCount  uint64
+	Position   int64
 	Labor      Labor
 }
 
@@ -100,15 +101,16 @@ func (w *Worker) start(key string) {
 			w.Wg.Done()
 		}()
 
-		position := int64(w.Labor.Start)
-		targetFile.Seek(position, 0)
+		w.Position = int64(w.Labor.Start)
+		targetFile.Seek(w.Position, 0)
 		scanner := bufio.NewScanner(targetFile)
 
 		for scanner.Scan() {
 			rawLine := scanner.Text()
+			w.LineCount++
 			line := &Line{
 				Raw:    rawLine,
-				Offset: position,
+				Offset: w.Position,
 			}
 			cred := line.Cred()
 			value, _ := getKeyValue(cred, key)
@@ -117,14 +119,8 @@ func (w *Worker) start(key string) {
 			binary.LittleEndian.PutUint64(offsetBuf, uint64(line.Offset))
 			outputFile.Write(digest[:digestSize])
 			outputFile.Write(offsetBuf[:offsetSize])
-			if w.Verbose {
-				fmt.Printf("%d) [%d] '%s' -> (%x : %x)\n", w.ID, position, value, digest[:digestSize], offsetBuf[:offsetSize])
-			}
-			position += int64(len(rawLine) + 1)
-			if w.Labor.Stop <= position {
-				if w.Verbose {
-					fmt.Printf("%d) Pos = %d, Stop = %d\n", w.ID, w.Labor.Stop, position)
-				}
+			w.Position += int64(len(rawLine) + 1)
+			if w.Labor.Stop <= w.Position {
 				break
 			}
 		}

@@ -39,7 +39,8 @@ func testSort(t *testing.T, input string) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	err = Start(messages, input, output.Name(), maxMemory, maxGoRoutines, tempDir, false)
+	sorter, err := GetSorter(input, output.Name(), maxMemory, maxGoRoutines, tempDir, false)
+	sorter.Start()
 	if err != nil {
 		t.Errorf("Sort error: %s\n", err)
 		return

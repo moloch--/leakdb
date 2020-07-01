@@ -100,7 +100,7 @@ var rootCmd = &cobra.Command{
 	Short: "Curate data sets for use with LeakDB",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("Must specify a command, see --help\n")
+		mainRun(cmd, args)
 	},
 }
 
@@ -109,11 +109,8 @@ func init() {
 	// Version
 	versionCmd.Flags().BoolP(detailsFlagStr, "d", false, "show additional version details")
 	rootCmd.AddCommand(versionCmd)
-
-	// Auto
-	autoCmd.Flags().StringP(configFlagStr, "c", "", "specify config file")
-	autoCmd.Flags().StringP(generateFlagStr, "g", "", "generate a default config")
-	rootCmd.AddCommand(autoCmd)
+	rootCmd.Flags().StringP(configFlagStr, "c", "", "specify config file")
+	rootCmd.Flags().StringP(generateFlagStr, "g", "", "generate a default config")
 
 	// Normalize
 	normalizeCmd.Flags().StringP(targetFlagStr, "t", "", "target directory of files")

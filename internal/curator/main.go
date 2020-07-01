@@ -54,50 +54,45 @@ type AutoConfig struct {
 	Verbose   bool   `json:"verbose"`
 }
 
-var autoCmd = &cobra.Command{
-	Use:   "auto",
-	Short: "Automatically perform all steps on given input(s)",
-	Long:  ``,
-	Run: func(cmd *cobra.Command, args []string) {
-		generate, err := cmd.Flags().GetString(generateFlagStr)
+func mainRun(cmd *cobra.Command, args []string) {
+	generate, err := cmd.Flags().GetString(generateFlagStr)
+	if err != nil {
+		fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", generateFlagStr, err)
+		return
+	}
+	if generate != "" {
+		err := defaultConf(generate)
 		if err != nil {
-			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", generateFlagStr, err)
-			return
+			fmt.Printf(Warn+"Failed to generate config %s\n", err)
 		}
-		if generate != "" {
-			err := defaultConf(generate)
-			if err != nil {
-				fmt.Printf(Warn+"Failed to generate config %s\n", err)
-			}
-			return
-		}
+		return
+	}
 
-		confFlag, err := cmd.Flags().GetString(configFlagStr)
-		if err != nil {
-			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", configFlagStr, err)
-			return
-		}
-		if confFlag == "" {
-			fmt.Printf(Warn+"Missing --%s\n", configFlagStr)
-			return
-		}
-		data, err := ioutil.ReadFile(confFlag)
-		if err != nil {
-			fmt.Printf(Warn+"Failed to read config %s\n", err)
-			return
-		}
-		autoConf := &AutoConfig{}
-		err = json.Unmarshal(data, autoConf)
-		if err != nil {
-			fmt.Printf(Warn+"Failed to parse config %s\n", err)
-			return
-		}
+	confFlag, err := cmd.Flags().GetString(configFlagStr)
+	if err != nil {
+		fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", configFlagStr, err)
+		return
+	}
+	if confFlag == "" {
+		fmt.Printf(Warn+"Missing --%s\n", configFlagStr)
+		return
+	}
+	data, err := ioutil.ReadFile(confFlag)
+	if err != nil {
+		fmt.Printf(Warn+"Failed to read config %s\n", err)
+		return
+	}
+	autoConf := &AutoConfig{}
+	err = json.Unmarshal(data, autoConf)
+	if err != nil {
+		fmt.Printf(Warn+"Failed to parse config %s\n", err)
+		return
+	}
 
-		err = auto(autoConf)
-		if err != nil {
-			fmt.Printf(Warn+"%s\n", err)
-		}
-	},
+	err = auto(autoConf)
+	if err != nil {
+		fmt.Printf(Warn+"%s\n", err)
+	}
 }
 
 func defaultConf(generate string) error {

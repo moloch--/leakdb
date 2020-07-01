@@ -201,7 +201,7 @@ type Indexer struct {
 	tmpDir     string
 	target     string
 	output     string
-	maxWorkers int
+	maxWorkers uint
 	workers    []*Worker
 	Offsets    []Labor
 	wg         *sync.WaitGroup
@@ -210,6 +210,10 @@ type Indexer struct {
 
 // Start the workers
 func (i *Indexer) Start() error {
+	err := os.MkdirAll(i.tmpDir, 0700)
+	if err != nil {
+		return err
+	}
 	defer func() {
 		if !i.NoCleanup {
 			os.RemoveAll(i.tmpDir)
@@ -264,24 +268,28 @@ func (i *Indexer) mergeIndexes() error {
 }
 
 // GetIndexer - Get an indexer
-func GetIndexer(target, output, key string, maxWorkers uint, tempDir string, noCleanup bool) (*Indexer, error) {
+func GetIndexer(target, output, key string, maxWorkers uint, tmpDir string, noCleanup bool) (*Indexer, error) {
 	var err error
 	if maxWorkers < 1 {
 		maxWorkers = 1
 	}
 	var wg sync.WaitGroup
 	indexer := &Indexer{
-		workers: []*Worker{},
-		wg:      &wg,
+		key:        key,
+		target:     target,
+		output:     output,
+		NoCleanup:  noCleanup,
+		maxWorkers: maxWorkers,
+		workers:    []*Worker{},
+		wg:         &wg,
 	}
 	indexer.Offsets, err = divisionOfLabor(target, int(maxWorkers))
 	if err != nil {
 		return nil, err
 	}
-	indexer.tmpDir = filepath.Join(tempDir, ".indexes")
-	err = os.MkdirAll(indexer.tmpDir, 0700)
-	if err != nil {
-		return nil, err
+	if tmpDir == "" {
+		tmpDir = os.TempDir()
 	}
+	indexer.tmpDir = filepath.Join(tmpDir, ".indexes")
 	return indexer, nil
 }

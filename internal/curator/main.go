@@ -189,52 +189,78 @@ func defaultConf(generate string) error {
 }
 
 func auto(conf *AutoConfig) error {
-	var err error
+
 	// Check input & output locations
-	_, err = os.Stat(conf.Input)
+	_, err := os.Stat(conf.Input)
 	if os.IsNotExist(err) {
-		return fmt.Errorf("Input %s %s", conf.Input, err)
+		return fmt.Errorf("Input error %s %s", conf.Input, err)
 	}
 
 	// *** Bloom ***
+	bloomed, err := bloom(conf)
+	if err != nil {
+		return err
+	}
+
+	// *** Index ***
+	indexes, err := index(bloomed, conf)
+	if err != nil {
+		return err
+	}
+
+	// *** Sort ***
+	err = sort(indexes, conf)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func bloom(conf *AutoConfig) (string, error) {
 	fmt.Printf("Applying bloom filter ...")
 	bloomOutput := conf.Bloom.Output
 	if bloomOutput == "" {
-		bloomOutput = filepath.Join(conf.TempDir, "bloomed.json")
+		bloomOutput = filepath.Join(conf.OutputDir, "bloomed.json")
 	}
+
 	bloom, err := bloomer.GetBloomer(conf.Input, bloomOutput, conf.Bloom.FilterSave,
 		conf.Bloom.FilterLoad, conf.Bloom.Workers, conf.Bloom.FilterSize, conf.Bloom.FilterHashes)
 	if err != nil {
-		return err
+		return "", err
 	}
 	err = bloom.Start()
 	if err != nil {
-		return err
+		return "", err
 	}
 	fmt.Printf("done!\n")
+	return bloomOutput, nil
+}
 
-	// *** Index ***
+func index(bloomOutput string, conf *AutoConfig) ([]string, error) {
 	indexes := []string{}
 	indexTmpDir := filepath.Join(conf.TempDir, "indexer")
 	for _, key := range conf.Index.Keys {
 		fmt.Printf("Computing %s index ...", key)
-		output := path.Join(conf.TempDir, fmt.Sprintf("%s-unsorted.idx", key))
+		output := path.Join(conf.TempDir, fmt.Sprintf("%s.idx", key))
 		indexes = append(indexes, output)
 		index, err := indexer.GetIndexer(bloomOutput, output, key, conf.Index.Workers, indexTmpDir, conf.Index.NoCleanup)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		err = index.Start()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		fmt.Printf("done!\n")
 	}
 	if !conf.Index.NoCleanup {
 		os.RemoveAll(indexTmpDir)
 	}
+	return indexes, nil
+}
 
-	// *** Sort ***
+func sort(indexes []string, conf *AutoConfig) error {
 	sortTmpDir := filepath.Join(conf.TempDir, "sorter")
 	for _, index := range indexes {
 		fmt.Printf("Sorting %s ...", index)

@@ -21,11 +21,12 @@ func testIndex(t *testing.T, input string, key string, expectedSize int) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	err = Start(input, output.Name(), key, 1, tempDir, false)
+	indexer, err := GetIndexer(input, output.Name(), key, 1, tempDir, false)
 	if err != nil {
 		t.Errorf("Index compute error: %s\n", err)
 		return
 	}
+	indexer.Start()
 
 	output.Seek(0, 0)
 	fileInfo, err := output.Stat()

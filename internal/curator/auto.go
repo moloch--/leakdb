@@ -197,10 +197,11 @@ func auto(conf *AutoConfig) error {
 
 		output := path.Join(workDir, fmt.Sprintf("%s-%s.idx", path.Dir(conf.InputDir), key))
 		indexes = append(indexes, output)
-		err = indexer.Start(bloomOutput, output, key, conf.Index.Workers, tempDir, conf.Index.NoCleanup)
+		index, err := indexer.GetIndexer(bloomOutput, output, key, conf.Index.Workers, tempDir, conf.Index.NoCleanup)
 		if err != nil {
 			return err
 		}
+		index.Start()
 	}
 	if !conf.NoCleanup {
 		for _, index := range indexes {

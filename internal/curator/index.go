@@ -76,9 +76,10 @@ var indexCmd = &cobra.Command{
 			defer os.RemoveAll(tempDir)
 		}
 
-		err = indexer.Start(target, output, key, workers, tempDir, noCleanup)
+		index, err := indexer.GetIndexer(target, output, key, workers, tempDir, noCleanup)
 		if err != nil {
 			fmt.Printf(Warn+"%s\n", err)
 		}
+		index.Start()
 	},
 }

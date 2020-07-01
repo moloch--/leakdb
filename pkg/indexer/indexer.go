@@ -146,41 +146,6 @@ func getKeyValue(cred Credential, key string) (string, error) {
 	return "", fmt.Errorf("invalid index key '%s'", key)
 }
 
-func mergeIndexes(output string, indexDir string, noCleanup bool) error {
-	outputFile, err := os.Create(output)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		outputFile.Close()
-	}()
-
-	indexFiles, err := ioutil.ReadDir(indexDir)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("Merging indexes ... ")
-
-	for _, indexFile := range indexFiles {
-		if !strings.HasSuffix(indexFile.Name(), filepath.Base(output)) {
-			continue
-		}
-		inFile := filepath.Join(indexDir, indexFile.Name())
-		in, err := os.Open(inFile)
-		if err != nil {
-			return err
-		}
-		io.Copy(outputFile, in)
-		if !noCleanup {
-			os.Remove(inFile)
-		}
-	}
-
-	fmt.Printf("done!\n")
-	return nil
-}
-
 func divisionOfLabor(target string, maxWorkers int) ([]Labor, error) {
 	targetInfo, err := os.Stat(target)
 	if os.IsNotExist(err) {
@@ -230,44 +195,93 @@ func divisionOfLabor(target string, maxWorkers int) ([]Labor, error) {
 	return offsets, nil
 }
 
-// Start - Start indexer
-func Start(target, output, key string, maxWorkers uint, tempDir string, noCleanup bool) error {
+// Indexer - The main indexer object
+type Indexer struct {
+	key        string
+	tmpDir     string
+	target     string
+	output     string
+	maxWorkers int
+	workers    []*Worker
+	Offsets    []Labor
+	wg         *sync.WaitGroup
+	NoCleanup  bool
+}
 
-	if maxWorkers < 1 {
-		maxWorkers = 1
+// Start the workers
+func (i *Indexer) Start() error {
+	defer func() {
+		if !i.NoCleanup {
+			os.RemoveAll(i.tmpDir)
+		}
+	}()
+	for id := 0; id < int(i.maxWorkers); id++ {
+		i.wg.Add(1)
+		outputPath := filepath.Join(i.tmpDir, fmt.Sprintf("%d_%s", id, filepath.Base(i.output)))
+		worker := &Worker{
+			ID:         id,
+			Wg:         i.wg,
+			TargetPath: i.target,
+			OutputPath: outputPath,
+			Labor:      i.Offsets[id],
+		}
+		worker.start(i.key)
+		i.workers = append(i.workers, worker)
 	}
+	i.wg.Wait()
+	return i.mergeIndexes()
+}
 
-	offsets, err := divisionOfLabor(target, int(maxWorkers))
-	if err != nil {
-		return err
-	}
-
-	indexDir := filepath.Join(tempDir, ".indexes")
-	err = os.MkdirAll(indexDir, 0700)
+func (i *Indexer) mergeIndexes() error {
+	outputFile, err := os.Create(i.output)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		if !noCleanup {
-			os.RemoveAll(indexDir)
-		}
+		outputFile.Close()
 	}()
 
-	wg := sync.WaitGroup{}
-	workers := []*Worker{}
-	for id := 0; id < int(maxWorkers); id++ {
-		wg.Add(1)
-		outputPath := filepath.Join(indexDir, fmt.Sprintf("%d_%s", id, filepath.Base(output)))
-		worker := &Worker{
-			ID:         id,
-			Wg:         &wg,
-			TargetPath: target,
-			OutputPath: outputPath,
-			Labor:      offsets[id],
-		}
-		worker.start(key)
-		workers = append(workers, worker)
+	indexFiles, err := ioutil.ReadDir(i.tmpDir)
+	if err != nil {
+		return err
 	}
-	wg.Wait()
-	return mergeIndexes(output, indexDir, noCleanup)
+
+	for _, indexFile := range indexFiles {
+		if !strings.HasSuffix(indexFile.Name(), filepath.Base(i.output)) {
+			continue
+		}
+		inFile := filepath.Join(i.tmpDir, indexFile.Name())
+		in, err := os.Open(inFile)
+		if err != nil {
+			return err
+		}
+		io.Copy(outputFile, in)
+		if !i.NoCleanup {
+			os.Remove(inFile)
+		}
+	}
+	return nil
+}
+
+// GetIndexer - Get an indexer
+func GetIndexer(target, output, key string, maxWorkers uint, tempDir string, noCleanup bool) (*Indexer, error) {
+	var err error
+	if maxWorkers < 1 {
+		maxWorkers = 1
+	}
+	var wg sync.WaitGroup
+	indexer := &Indexer{
+		workers: []*Worker{},
+		wg:      &wg,
+	}
+	indexer.Offsets, err = divisionOfLabor(target, int(maxWorkers))
+	if err != nil {
+		return nil, err
+	}
+	indexer.tmpDir = filepath.Join(tempDir, ".indexes")
+	err = os.MkdirAll(indexer.tmpDir, 0700)
+	if err != nil {
+		return nil, err
+	}
+	return indexer, nil
 }

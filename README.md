@@ -20,4 +20,4 @@ See the [wiki](https://github.com/moloch--/leakdb/wiki) for detailed setup and u
 
 ### Compile From Source
 
-Just run `make`, files will be put in `./bin`. The client, curator, and server support are pure Go and support any Go compiler target. The serverless binary is Linux only, since AWS Lambda only supports Linux.
+Just run `make`, files will be put in `./bin`. The client, curator, and server are pure Go and should support any valid Go compiler target. The serverless binary is Linux only, since AWS Lambda only supports Linux.

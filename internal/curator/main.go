@@ -192,7 +192,7 @@ func defaultConf(generate string) error {
 }
 
 func auto(conf *AutoConfig) error {
-
+	started := time.Now()
 	// Check input & output locations
 	_, err := os.Stat(conf.Input)
 	if os.IsNotExist(err) {
@@ -216,6 +216,8 @@ func auto(conf *AutoConfig) error {
 	if err != nil {
 		return err
 	}
+
+	fmt.Printf("Completed in %s\n", time.Now().Sub(started))
 
 	return nil
 }
@@ -277,17 +279,23 @@ func index(bloomOutput string, conf *AutoConfig) ([]string, error) {
 	indexes := []string{}
 	indexTmpDir := filepath.Join(conf.TempDir, "indexer")
 	for _, key := range conf.Index.Keys {
-		fmt.Printf("Computing %s index ...\u001b[s", key)
+		fmt.Printf("\r\u001b[2K\rComputing %s index ...\u001b[s", key)
 		output := path.Join(conf.TempDir, fmt.Sprintf("%s.idx", key))
 		indexes = append(indexes, output)
 		index, err := indexer.GetIndexer(bloomOutput, output, key, conf.Index.Workers, indexTmpDir, conf.Index.NoCleanup)
 		if err != nil {
 			return nil, err
 		}
+
+		done := make(chan bool)
+		go indexProgress(index, done)
 		err = index.Start()
+		done <- true
+		<-done
 		if err != nil {
 			return nil, err
 		}
+
 		fmt.Printf("\u001b[u done!\n")
 	}
 	if !conf.Index.NoCleanup {
@@ -296,47 +304,69 @@ func index(bloomOutput string, conf *AutoConfig) ([]string, error) {
 	return indexes, nil
 }
 
-func indexProgress() {
-
+func indexProgress(index *indexer.Indexer, done chan bool) {
+	lastCount := 0
+	fmt.Println()
+	for {
+		select {
+		case <-time.After(time.Second):
+			count := index.Count()
+			delta := count - lastCount
+			fmt.Printf("\r\u001b[2KIndexed %d (%d/sec)", count, delta)
+			lastCount = count
+		case <-done:
+			fmt.Printf("\r\u001b[2K")
+			fmt.Printf("\u001b[1A")
+			done <- true
+			return
+		}
+	}
 }
 
 func sort(indexes []string, conf *AutoConfig) error {
 	sortTmpDir := filepath.Join(conf.TempDir, "sorter")
 	for _, index := range indexes {
-		fmt.Printf("Sorting %s ...", index)
+		fmt.Printf("\r\u001b[2K\rSorting %s ...\u001b[s", path.Base(index))
 		output := path.Join(conf.OutputDir, path.Base(index))
 		sort, err := sorter.GetSorter(index, output, int(conf.Sort.MaxMemory),
 			int(conf.Sort.MaxGoRoutines), sortTmpDir, conf.Sort.NoCleanup)
 		if err != nil {
 			return err
 		}
+		done := make(chan bool)
+		go sortProgress(sort, done)
 		sort.Start()
-		fmt.Printf("done!\n")
+		done <- true
+		<-done
+		fmt.Printf("\u001b[u done!\n")
 	}
 	return nil
 }
 
-func sortProgress(start time.Time, done chan bool) {
+func sortProgress(sort *sorter.Sorter, done chan bool) {
 	spin := 0
 	frames := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 	stdout := bufio.NewWriter(os.Stdout)
 	stats := &runtime.MemStats{}
-	elapsed := time.Now().Sub(start)
+	started := time.Now()
+	elapsed := time.Now().Sub(started)
 	maxHeap := float64(0)
+	fmt.Println()
 	fmt.Println()
 	for {
 		select {
 		case <-done:
-			fmt.Printf("\u001b[1A") // Move up one
-			fmt.Println("\u001b[2K\rSorting completed!")
+			fmt.Printf("\u001b[2K\r")
+			fmt.Printf("\u001b[1A\r")
+			fmt.Printf("\u001b[2K\r")
 			done <- true
 			return
-		case <-time.After(100 * time.Millisecond):
+		case <-time.After(250 * time.Millisecond):
 			fmt.Printf("\u001b[1A") // Move up one
 			runtime.ReadMemStats(stats)
 			if spin%10 == 0 {
 				// Calculating time is kind of expensive, so update once per ~second
-				elapsed = time.Now().Sub(start)
+				elapsed = time.Now().Sub(started)
 			}
 			heapAllocGb := float64(stats.HeapAlloc) / float64(gb)
 			if maxHeap < heapAllocGb {
@@ -344,8 +374,11 @@ func sortProgress(start time.Time, done chan bool) {
 			}
 			fmt.Printf("\u001b[2K\rGo routines: %d - Heap: %0.3fGb (Max: %0.3fGb) - Time: %v\n",
 				runtime.NumGoroutine(), heapAllocGb, maxHeap, elapsed)
-			fmt.Printf("\u001b[2K\rSorting, please wait ... %s ",
-				frames[spin%10])
+			status := sort.Status
+			if status == sorter.StatusMerging {
+				status = fmt.Sprintf("%s (%.2f%%)", status, sort.MergePercent)
+			}
+			fmt.Printf("\u001b[2K\r%s %s ... ", frames[spin%10], status)
 			spin++
 			stdout.Flush()
 		}

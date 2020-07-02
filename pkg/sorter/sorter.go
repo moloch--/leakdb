@@ -65,6 +65,15 @@ const (
 	Mb = 1024 * Kb
 	// Gb - Gigabyte
 	Gb = 1024 * Mb
+
+	// StatusNotStarted - The Indexer has been created but not started
+	StatusNotStarted = "Not Started"
+	// StatusStarting - Indexer is starting
+	StatusStarting = "Starting"
+	// StatusSorting - Indexer is sorting tapes
+	StatusSorting = "Sorting"
+	// StatusMerging - Indexer is merging tapes
+	StatusMerging = "Merging"
 )
 
 // Entry - [48-bit digest][48-bit offset] =  96-bit (12 byte) entry
@@ -185,7 +194,9 @@ type Sorter struct {
 	TapeDir       string
 	NoTapeCleanup bool
 	Heap          *binaryheap.Heap
-	Percent       float64
+	MergePercent  float64
+
+	Status string
 }
 
 // Get - Get an index entry at position
@@ -232,6 +243,7 @@ func ceilDivideInt(a, b int) int {
 
 // Start - Sorts the index
 func (idx *Sorter) Start() {
+	idx.Status = StatusStarting
 	var err error
 
 	idx.Output, err = os.Create(idx.OutputPath)
@@ -267,6 +279,7 @@ func (idx *Sorter) Start() {
 	queue := make(chan *Tape)
 	quit := make(chan bool)
 
+	idx.Status = StatusSorting
 	// Start n workers equal to CPU core(s)
 	// max memory will be approx splitBufSize*CPU Cores
 	for id := 1; id <= runtime.NumCPU(); id++ {
@@ -294,6 +307,7 @@ func (idx *Sorter) Start() {
 	wg.Wait() // Wait for all quicksorts to complete
 
 	// K-way merge sort using binary heap
+	idx.Status = StatusMerging
 	for _, tape := range idx.Tapes {
 		tape.Prefetch(0)
 	}
@@ -309,7 +323,7 @@ func (idx *Sorter) Start() {
 		value, okay := idx.Heap.Pop()
 		count++
 		if count%mod == 0 {
-			idx.Percent = (float64(count) / float64(idx.Size)) * 100.0
+			idx.MergePercent = (float64(count) / float64(idx.Size)) * 100.0
 		}
 		if !okay {
 			panic("Failed to pop value from heap")
@@ -500,7 +514,7 @@ func EntryComparer(a, b interface{}) int {
 }
 
 // CheckSort - Check if an index is sorted
-func CheckSort(messages chan<- string, index string, verbose bool) (bool, error) {
+func CheckSort(index string, verbose bool) (bool, error) {
 
 	indexStat, err := os.Stat(index)
 	if os.IsNotExist(err) || indexStat.IsDir() {

@@ -204,6 +204,15 @@ type Indexer struct {
 	NoCleanup  bool
 }
 
+// Count the lines processed
+func (i *Indexer) Count() int {
+	sum := uint64(0)
+	for _, worker := range i.workers {
+		sum += worker.LineCount
+	}
+	return int(sum)
+}
+
 // Start the workers
 func (i *Indexer) Start() error {
 	err := os.MkdirAll(i.tmpDir, 0700)

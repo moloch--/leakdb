@@ -11,20 +11,7 @@ const (
 	maxMemory     = 2048
 )
 
-func logChannel(t *testing.T) chan string {
-	messages := make(chan string)
-	go func() {
-		for msg := range messages {
-			t.Log(msg)
-		}
-	}()
-	return messages
-}
-
 func testSort(t *testing.T, input string) {
-	messages := logChannel(t)
-	defer close(messages)
-
 	output, err := ioutil.TempFile("", "output.idx")
 	if err != nil {
 		t.Errorf("temp file error %s", err)
@@ -47,7 +34,7 @@ func testSort(t *testing.T, input string) {
 	}
 
 	output.Seek(0, 0)
-	sorted, err := CheckSort(messages, output.Name(), false)
+	sorted, err := CheckSort(output.Name(), false)
 	if err != nil {
 		t.Errorf("Check sort error: %s\n", err)
 		return

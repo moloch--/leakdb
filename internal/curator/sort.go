@@ -18,12 +18,9 @@ package curator
 */
 
 import (
-	"bufio"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"runtime"
-	"time"
 
 	"github.com/moloch--/leakdb/pkg/sorter"
 	"github.com/spf13/cobra"
@@ -88,43 +85,4 @@ var sortCmd = &cobra.Command{
 		}
 		sort.Start()
 	},
-}
-
-func progress(start time.Time, messages chan string, done chan bool) {
-	spin := 0
-	frames := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
-	stdout := bufio.NewWriter(os.Stdout)
-	stats := &runtime.MemStats{}
-	elapsed := time.Now().Sub(start)
-	maxHeap := float64(0)
-	fmt.Println()
-	for {
-		select {
-		case <-done:
-			fmt.Printf("\u001b[1A") // Move up one
-			fmt.Println("\u001b[2K\rSorting completed!")
-			defer func() { done <- true }()
-			return
-		case msg := <-messages:
-			fmt.Printf("\u001b[1A")
-			fmt.Printf("\u001b[2K\r%s\n\n", msg)
-		case <-time.After(100 * time.Millisecond):
-			fmt.Printf("\u001b[1A") // Move up one
-			runtime.ReadMemStats(stats)
-			if spin%10 == 0 {
-				// Calculating time is kind of expensive, so update once per ~second
-				elapsed = time.Now().Sub(start)
-			}
-			heapAllocGb := float64(stats.HeapAlloc) / float64(gb)
-			if maxHeap < heapAllocGb {
-				maxHeap = heapAllocGb
-			}
-			fmt.Printf("\u001b[2K\rGo routines: %d - Heap: %0.3fGb (Max: %0.3fGb) - Time: %v\n",
-				runtime.NumGoroutine(), heapAllocGb, maxHeap, elapsed)
-			fmt.Printf("\u001b[2K\rSorting, please wait ... %s ",
-				frames[spin%10])
-			spin++
-			stdout.Flush()
-		}
-	}
 }

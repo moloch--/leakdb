@@ -1,6 +1,7 @@
 package curator
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -9,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/moloch--/leakdb/pkg/bloomer"
 	"github.com/moloch--/leakdb/pkg/indexer"
@@ -136,6 +138,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 		fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", tempDirFlagStr, err)
 		return
 	}
+	rand.Seed(time.Now().UnixNano())
 	dirName := fmt.Sprintf("leakdb-tmp-%d", rand.Intn(999999))
 	if autoConf.TempDir == "" {
 		autoConf.TempDir = filepath.Join(cwd, dirName)
@@ -218,30 +221,63 @@ func auto(conf *AutoConfig) error {
 }
 
 func bloom(conf *AutoConfig) (string, error) {
-	fmt.Printf("Applying bloom filter ...")
+	fmt.Printf("Applying bloom filter ...\u001b[s")
 	bloomOutput := conf.Bloom.Output
 	if bloomOutput == "" {
 		bloomOutput = filepath.Join(conf.OutputDir, "bloomed.json")
 	}
-
 	bloom, err := bloomer.GetBloomer(conf.Input, bloomOutput, conf.Bloom.FilterSave,
 		conf.Bloom.FilterLoad, conf.Bloom.Workers, conf.Bloom.FilterSize, conf.Bloom.FilterHashes)
 	if err != nil {
 		return "", err
 	}
+
+	// Progress animation
+	done := make(chan bool)
+	go bloomProgress(bloom, done)
 	err = bloom.Start()
+	done <- true
+	<-done
 	if err != nil {
 		return "", err
 	}
-	fmt.Printf("done!\n")
+	fmt.Printf("\u001b[u done!\n")
 	return bloomOutput, nil
+}
+
+func bloomProgress(bloom *bloomer.Bloom, done chan bool) {
+	stdout := bufio.NewWriter(os.Stdout)
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	lastCount := 0
+	for {
+		select {
+		case <-time.After(time.Second):
+			count, duplicates := bloom.Progress()
+			delta := count - lastCount
+			fmt.Printf("\u001b[2A")
+			fmt.Printf("\r\u001b[2K   Uniques = %d (%d/sec)\n", count-duplicates, delta)
+			fmt.Printf("\r\u001b[2KDuplicates = %d\n", duplicates)
+			stdout.Flush()
+			lastCount = count
+		case <-done:
+			fmt.Printf("\u001b[2K")
+			fmt.Printf("\u001b[1A")
+			fmt.Printf("\u001b[2K")
+			fmt.Printf("\u001b[2A")
+			stdout.Flush()
+			done <- true
+			return
+		}
+	}
 }
 
 func index(bloomOutput string, conf *AutoConfig) ([]string, error) {
 	indexes := []string{}
 	indexTmpDir := filepath.Join(conf.TempDir, "indexer")
 	for _, key := range conf.Index.Keys {
-		fmt.Printf("Computing %s index ...", key)
+		fmt.Printf("Computing %s index ...\u001b[s", key)
 		output := path.Join(conf.TempDir, fmt.Sprintf("%s.idx", key))
 		indexes = append(indexes, output)
 		index, err := indexer.GetIndexer(bloomOutput, output, key, conf.Index.Workers, indexTmpDir, conf.Index.NoCleanup)
@@ -252,12 +288,16 @@ func index(bloomOutput string, conf *AutoConfig) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		fmt.Printf("done!\n")
+		fmt.Printf("\u001b[u done!\n")
 	}
 	if !conf.Index.NoCleanup {
 		os.RemoveAll(indexTmpDir)
 	}
 	return indexes, nil
+}
+
+func indexProgress() {
+
 }
 
 func sort(indexes []string, conf *AutoConfig) error {
@@ -274,4 +314,40 @@ func sort(indexes []string, conf *AutoConfig) error {
 		fmt.Printf("done!\n")
 	}
 	return nil
+}
+
+func sortProgress(start time.Time, done chan bool) {
+	spin := 0
+	frames := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+	stdout := bufio.NewWriter(os.Stdout)
+	stats := &runtime.MemStats{}
+	elapsed := time.Now().Sub(start)
+	maxHeap := float64(0)
+	fmt.Println()
+	for {
+		select {
+		case <-done:
+			fmt.Printf("\u001b[1A") // Move up one
+			fmt.Println("\u001b[2K\rSorting completed!")
+			done <- true
+			return
+		case <-time.After(100 * time.Millisecond):
+			fmt.Printf("\u001b[1A") // Move up one
+			runtime.ReadMemStats(stats)
+			if spin%10 == 0 {
+				// Calculating time is kind of expensive, so update once per ~second
+				elapsed = time.Now().Sub(start)
+			}
+			heapAllocGb := float64(stats.HeapAlloc) / float64(gb)
+			if maxHeap < heapAllocGb {
+				maxHeap = heapAllocGb
+			}
+			fmt.Printf("\u001b[2K\rGo routines: %d - Heap: %0.3fGb (Max: %0.3fGb) - Time: %v\n",
+				runtime.NumGoroutine(), heapAllocGb, maxHeap, elapsed)
+			fmt.Printf("\u001b[2K\rSorting, please wait ... %s ",
+				frames[spin%10])
+			spin++
+			stdout.Flush()
+		}
+	}
 }

@@ -55,6 +55,11 @@ var indexCmd = &cobra.Command{
 			fmt.Printf(Warn+"Error --%s must be one of: email, user, or domain\n", keyFlagStr)
 			return
 		}
+		if key == "domain" {
+			fmt.Println()
+			fmt.Println(Warn + "Warning: Due to the high number of collisions, creating domain indexes can take a long time.")
+			fmt.Println()
+		}
 		noCleanup, err := cmd.Flags().GetBool(noCleanupFlagStr)
 		if err != nil {
 			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", noCleanupFlagStr, err)

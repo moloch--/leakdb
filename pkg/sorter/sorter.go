@@ -196,8 +196,10 @@ type Sorter struct {
 	Heap          *binaryheap.Heap
 	MergePercent  float64
 
-	CurrentTapeIndex int
-	Status           string
+	Workers []*Worker
+
+	NumberOfTapes int
+	Status        string
 }
 
 // Get - Get an index entry at position
@@ -269,14 +271,14 @@ func (idx *Sorter) Start() {
 		}
 	}()
 
-	memPerWorker := ceilDivideInt(idx.MaxMemory, runtime.NumCPU()) // Max memory per worker
-	tapeSize := ceilDivideInt(memPerWorker, entrySize)             // Number of entries in a single tape
-	numberOfTapes := ceilDivideInt(idx.Size, tapeSize)             // Total number of tapes we need
-	memPerTape := ceilDivideInt(idx.MaxMemory, numberOfTapes+1)    // Size in bytes
-	mergeBufLen := ceilDivideInt(memPerTape, entrySize)            // Len of slice
+	memPerWorker := ceilDivideInt(idx.MaxMemory, runtime.NumCPU())  // Max memory per worker
+	tapeSize := ceilDivideInt(memPerWorker, entrySize)              // Number of entries in a single tape
+	idx.NumberOfTapes = ceilDivideInt(idx.Size, tapeSize)           // Total number of tapes we need
+	memPerTape := ceilDivideInt(idx.MaxMemory, idx.NumberOfTapes+1) // Size in bytes
+	mergeBufLen := ceilDivideInt(memPerTape, entrySize)             // Len of slice
 
 	wg := sync.WaitGroup{}
-	workers := []*Worker{}
+	idx.Workers = []*Worker{}
 	queue := make(chan *Tape)
 	quit := make(chan bool)
 
@@ -286,24 +288,24 @@ func (idx *Sorter) Start() {
 	for id := 1; id <= runtime.NumCPU(); id++ {
 		wg.Add(1)
 		worker := &Worker{
-			ID:            id,
-			Queue:         queue,
-			Quit:          quit,
-			Wg:            &wg,
-			MaxGoRoutines: idx.MaxGoRoutines,
+			ID:             id,
+			Queue:          queue,
+			Quit:           quit,
+			Wg:             &wg,
+			MaxGoRoutines:  idx.MaxGoRoutines,
+			TapesCompleted: 0,
 		}
 		worker.start()
-		workers = append(workers, worker)
+		idx.Workers = append(idx.Workers, worker)
 	}
 
-	for tapeIndex := 0; tapeIndex < numberOfTapes; tapeIndex++ {
+	for tapeIndex := 0; tapeIndex < idx.NumberOfTapes; tapeIndex++ {
 		tape := idx.CreateTape(tapeIndex, tapeSize)
 		tape.MergeSize = mergeBufLen
 		idx.Tapes = append(idx.Tapes, tape)
-		idx.CurrentTapeIndex = tapeIndex + 1
 		queue <- tape // Feed tapes to workers
 	}
-	for _, worker := range workers {
+	for _, worker := range idx.Workers {
 		worker.Quit <- true
 	}
 	wg.Wait() // Wait for all quicksorts to complete
@@ -392,13 +394,23 @@ func (idx *Sorter) CreateTape(id int, n int) *Tape {
 	return tape
 }
 
+// TapesCompleted - Number of tapes completed
+func (idx *Sorter) TapesCompleted() int {
+	sum := 0
+	for _, worker := range idx.Workers {
+		sum += worker.TapesCompleted
+	}
+	return sum
+}
+
 // Worker - An instance of quicksort
 type Worker struct {
-	ID            int
-	Queue         <-chan *Tape
-	Quit          chan bool
-	Wg            *sync.WaitGroup
-	MaxGoRoutines int
+	ID             int
+	Queue          <-chan *Tape
+	Quit           chan bool
+	Wg             *sync.WaitGroup
+	MaxGoRoutines  int
+	TapesCompleted int
 }
 
 func (w *Worker) start() {
@@ -408,6 +420,7 @@ func (w *Worker) start() {
 			case tape := <-w.Queue:
 				Quicksort(tape.Entries, w.MaxGoRoutines)
 				tape.Save()
+				w.TapesCompleted++
 			case <-w.Quit:
 				w.Wg.Done()
 				return

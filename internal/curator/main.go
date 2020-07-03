@@ -62,7 +62,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 
 	autoConf := &AutoConfig{
 		Bloom: &BloomConfig{},
-		Index: &IndexConfig{NoCleanup: false, Keys: []string{"user", "email", "domain"}},
+		Index: &IndexConfig{NoCleanup: false},
 		Sort:  &SortConfig{NoCleanup: false},
 	}
 
@@ -77,6 +77,29 @@ func mainRun(cmd *cobra.Command, args []string) {
 	}
 	autoConf.Bloom.Workers = workers
 	autoConf.Index.Workers = workers
+
+	keys, err := cmd.Flags().GetStringSlice(keysFlagStr)
+	if err != nil {
+		fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", keysFlagStr, err)
+		return
+	}
+	autoConf.Index.Keys = []string{}
+	for _, key := range keys {
+		if key != "email" && key != "user" && key != "domain" {
+			fmt.Printf(Warn+"Invalid index key '%s'\n", key)
+			return
+		}
+		if key == "domain" {
+			fmt.Println()
+			fmt.Println(Warn + "Warning: Due to the high number of collisions, creating domain indexes can take a long time.")
+			fmt.Println()
+		}
+		autoConf.Index.Keys = append(autoConf.Index.Keys, key)
+	}
+	if len(autoConf.Index.Keys) < 1 {
+		fmt.Printf(Warn+"No valid index keys, specify at least one key with --%s\n", keysFlagStr)
+		return
+	}
 
 	// Bloom Filter Options
 	autoConf.Bloom.FilterSize, err = cmd.Flags().GetUint(filterSizeFlagStr)
@@ -379,7 +402,7 @@ func sortProgress(sort *sorter.Sorter, done chan bool) {
 				status = fmt.Sprintf("%s (%.2f%%)", status, sort.MergePercent)
 				fmt.Printf("\u001b[2K\r %s %s ... ", frames[spin%10], status)
 			} else if status == sorter.StatusSorting {
-				status = fmt.Sprintf("%s tape %d of %d", status, sort.CurrentTapeIndex, len(sort.Tapes))
+				status = fmt.Sprintf("%s, completed %d of %d tape(s)", status, sort.TapesCompleted(), len(sort.Tapes))
 				fmt.Printf("\u001b[2K\r %s %s ... ", frames[spin%10], status)
 			} else {
 				fmt.Printf("\u001b[2K\r %s %s ... ", frames[spin%10], status)

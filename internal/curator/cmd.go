@@ -36,6 +36,7 @@ const (
 	// Auto flags
 	configFlagStr   = "conf"
 	generateFlagStr = "generate"
+	keysFlagStr     = "keys"
 
 	// Normalize flags
 	targetFlagStr     = "target"
@@ -110,6 +111,8 @@ func init() {
 	// Version
 	versionCmd.Flags().BoolP(detailsFlagStr, "d", false, "show additional version details")
 	rootCmd.AddCommand(versionCmd)
+
+	rootCmd.Flags().StringSliceP(keysFlagStr, "k", []string{"user", "email"}, "Specify keys for index (email, user, domain)")
 
 	rootCmd.Flags().StringP(tempDirFlagStr, "T", "", "directory for temp files (default: cwd)")
 

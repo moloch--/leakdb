@@ -78,7 +78,7 @@ var sortCmd = &cobra.Command{
 		}
 		if tempDir == "" {
 			cwd, _ := os.Getwd()
-			tempDir, err = ioutil.TempDir(cwd, ".leakdb_")
+			tempDir, err = ioutil.TempDir(cwd, "leakdb-tmp")
 			if err != nil {
 				fmt.Printf(Warn+"Temp error: %s\n", err)
 				return

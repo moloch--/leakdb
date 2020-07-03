@@ -178,14 +178,11 @@ func mainRun(cmd *cobra.Command, args []string) {
 		fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", tempDirFlagStr, err)
 		return
 	}
-	rand.Seed(time.Now().UnixNano())
-	dirName := fmt.Sprintf("leakdb-tmp-%d", rand.Intn(999999))
 	if autoConf.TempDir == "" {
-		autoConf.TempDir = filepath.Join(cwd, dirName)
+		autoConf.TempDir, err = getTempDir(cwd)
 	} else {
-		autoConf.TempDir = filepath.Join(autoConf.TempDir, dirName)
+		autoConf.TempDir, err = getTempDir(autoConf.TempDir)
 	}
-	err = os.MkdirAll(autoConf.TempDir, 0700)
 	if err != nil {
 		fmt.Printf(Warn+"Failed to create temp dir %s", err)
 		return
@@ -429,4 +426,15 @@ func sortProgress(sort *sorter.Sorter, done chan bool) {
 			stdout.Flush()
 		}
 	}
+}
+
+func getTempDir(parent string) (string, error) {
+	rand.Seed(time.Now().UnixNano())
+	dirName := fmt.Sprintf("leakdb-tmp-%d", rand.Intn(999999))
+	tempDir := filepath.Join(parent, dirName)
+	err := os.MkdirAll(tempDir, 0700)
+	if err != nil {
+		return "", err
+	}
+	return tempDir, nil
 }

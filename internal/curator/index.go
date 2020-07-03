@@ -19,7 +19,6 @@ package curator
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"time"
 
@@ -72,9 +71,10 @@ var indexCmd = &cobra.Command{
 			return
 		}
 		if tempDir == "" {
-			tempDir, err = ioutil.TempDir("", "leakdb_")
+			cwd, _ := os.Getwd()
+			tempDir, err = getTempDir(cwd)
 			if err != nil {
-				fmt.Printf(Warn+"Temp error: %s\n", err)
+				fmt.Printf(Warn+"%s\n", err)
 				return
 			}
 		}

@@ -123,7 +123,7 @@ func init() {
 	rootCmd.Flags().StringP(jsonFlagStr, "j", "", "input file/directory of normalized json file(s)")
 	rootCmd.Flags().StringP(outputFlagStr, "o", "", "output directory")
 	rootCmd.Flags().UintP(bloomWorkersFlagStr, "W", uint(1), "max number of bloom filter workers")
-	rootCmd.Flags().UintP(indexWorkersFlagStr, "w", uint(1), "max number of index workers")
+	rootCmd.Flags().UintP(indexWorkersFlagStr, "w", uint(runtime.NumCPU()), "max number of index workers")
 	rootCmd.Flags().UintP(sortWorkersFlagStr, "s", uint(runtime.NumCPU()), "max number of sort workers")
 	rootCmd.Flags().UintP(filterSizeFlagStr, "F", 8, "bloom filter size in GBs")
 	rootCmd.Flags().UintP(filterHashesFlagStr, "f", 14, "number of bloom filter hash functions")
@@ -153,7 +153,7 @@ func init() {
 	// Indexer
 	indexCmd.Flags().StringP(jsonFlagStr, "j", "", "json input file")
 	indexCmd.Flags().StringP(outputFlagStr, "o", "leakdb.idx", "output index file")
-	indexCmd.Flags().UintP(workersFlagStr, "w", uint(2), "number of worker threads")
+	indexCmd.Flags().UintP(workersFlagStr, "w", uint(runtime.NumCPU()), "number of worker threads")
 	indexCmd.Flags().StringP(keyFlagStr, "k", "email", "index key can be: email, user, or domain")
 	indexCmd.Flags().BoolP(noCleanupFlagStr, "N", false, "skip cleanup of temp file(s)")
 	indexCmd.Flags().StringP(tempDirFlagStr, "T", "", "directory for temp files (default: cwd)")

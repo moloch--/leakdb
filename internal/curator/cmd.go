@@ -20,6 +20,7 @@ package curator
 import (
 	"fmt"
 	"os"
+	"runtime"
 
 	"github.com/spf13/cobra"
 )
@@ -38,6 +39,7 @@ const (
 	keysFlagStr         = "keys"
 	bloomWorkersFlagStr = "workers-bloom"
 	indexWorkersFlagStr = "workers-index"
+	sortWorkersFlagStr  = "workers-sort"
 
 	// Normalize flags
 	targetFlagStr     = "target"
@@ -67,6 +69,8 @@ const (
 	// Search flags
 	valueFlagStr   = "value"
 	verboseFlagStr = "verbose"
+
+	defaultMaxMemory = 1024
 
 	// ANSI Colors
 	normal    = "\033[0m"
@@ -120,12 +124,12 @@ func init() {
 	rootCmd.Flags().StringP(outputFlagStr, "o", "", "output directory")
 	rootCmd.Flags().UintP(bloomWorkersFlagStr, "W", uint(1), "max number of bloom filter workers")
 	rootCmd.Flags().UintP(indexWorkersFlagStr, "w", uint(1), "max number of index workers")
-	rootCmd.Flags().UintP(filterSizeFlagStr, "s", 8, "bloom filter size in GBs")
+	rootCmd.Flags().UintP(sortWorkersFlagStr, "s", uint(runtime.NumCPU()), "max number of sort workers")
+	rootCmd.Flags().UintP(filterSizeFlagStr, "F", 8, "bloom filter size in GBs")
 	rootCmd.Flags().UintP(filterHashesFlagStr, "f", 14, "number of bloom filter hash functions")
 	rootCmd.Flags().StringP(filterLoadFlagStr, "L", "", "load existing bloom filter from saved file")
 	rootCmd.Flags().StringP(filterSaveFlagStr, "S", "", "save bloom filter to file when complete")
-	rootCmd.Flags().UintP(maxMemoryFlagStr, "m", 1024, "max memory in MBs per worker (not exact!)")
-	rootCmd.Flags().UintP(maxGoRoutinesFlagStr, "g", 10000, "max number of goroutines")
+	rootCmd.Flags().UintP(maxMemoryFlagStr, "m", defaultMaxMemory, "max memory in MBs, this is not exact! See detailed --help")
 
 	// Normalize
 	normalizeCmd.Flags().StringP(targetFlagStr, "t", "", "target directory of files")
@@ -158,8 +162,8 @@ func init() {
 	// Sorter
 	sortCmd.Flags().StringP(indexFlagStr, "i", "", "index file to sort")
 	sortCmd.Flags().StringP(outputFlagStr, "o", "", "output index file")
-	sortCmd.Flags().UintP(maxMemoryFlagStr, "m", 1024, "max memory in MBs per worker (not exact!)")
-	sortCmd.Flags().UintP(maxGoRoutinesFlagStr, "g", 10000, "max goroutines")
+	sortCmd.Flags().UintP(workersFlagStr, "w", uint(runtime.NumCPU()), "number of worker threads")
+	sortCmd.Flags().UintP(maxMemoryFlagStr, "m", defaultMaxMemory, "max memory in MBs, this is not exact! See detailed --help")
 	sortCmd.Flags().StringP(tempDirFlagStr, "T", "", "directory for temp files (default: cwd)")
 	sortCmd.Flags().BoolP(noCleanupFlagStr, "N", false, "skip cleanup temp file(s)")
 	rootCmd.AddCommand(sortCmd)

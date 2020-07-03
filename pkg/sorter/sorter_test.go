@@ -7,8 +7,7 @@ import (
 )
 
 const (
-	maxGoRoutines = 1000
-	maxMemory     = 2048
+	maxMemory = 2048
 )
 
 func testSort(t *testing.T, input string) {
@@ -26,7 +25,7 @@ func testSort(t *testing.T, input string) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	sorter, err := GetSorter(input, output.Name(), maxMemory, maxGoRoutines, tempDir, false)
+	sorter, err := GetSorter(input, output.Name(), 4, maxMemory, tempDir, false)
 	sorter.Start()
 	if err != nil {
 		t.Errorf("Sort error: %s\n", err)

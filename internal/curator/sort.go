@@ -56,14 +56,15 @@ var sortCmd = &cobra.Command{
 		if maxMemory < 1 {
 			maxMemory = 1
 		}
-		maxGoRoutines, err := cmd.Flags().GetUint(maxGoRoutinesFlagStr)
+		workers, err := cmd.Flags().GetUint(workersFlagStr)
 		if err != nil {
-			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", maxGoRoutinesFlagStr, err)
+			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", sortWorkersFlagStr, err)
 			return
 		}
-		if maxGoRoutines < 1 {
-			maxGoRoutines = 1
+		if workers < 1 {
+			workers = 1
 		}
+
 		noCleanup, err := cmd.Flags().GetBool(noCleanupFlagStr)
 		if err != nil {
 			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", noCleanupFlagStr, err)
@@ -86,7 +87,7 @@ var sortCmd = &cobra.Command{
 			defer os.RemoveAll(tempDir)
 		}
 
-		sort, err := sorter.GetSorter(index, output, int(maxMemory), int(maxGoRoutines), tempDir, noCleanup)
+		sort, err := sorter.GetSorter(index, output, int(workers), int(maxMemory), tempDir, noCleanup)
 		if err != nil {
 			fmt.Printf(Warn+"%s\n", err)
 			return

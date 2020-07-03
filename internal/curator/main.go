@@ -37,9 +37,9 @@ type IndexConfig struct {
 
 // SortConfig - Sort configuration
 type SortConfig struct {
-	MaxGoRoutines uint `json:"max_goroutines"`
-	MaxMemory     uint `json:"max_memory"`
-	NoCleanup     bool `json:"no_cleanup"`
+	Workers   uint `json:"workers"`
+	MaxMemory uint `json:"max_memory"`
+	NoCleanup bool `json:"no_cleanup"`
 }
 
 // AutoConfig - A complete config for the auto command
@@ -85,6 +85,15 @@ func mainRun(cmd *cobra.Command, args []string) {
 		workers = 1
 	}
 	autoConf.Index.Workers = workers
+	workers, err = cmd.Flags().GetUint(sortWorkersFlagStr)
+	if err != nil {
+		fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", sortWorkersFlagStr, err)
+		return
+	}
+	if workers < 1 {
+		workers = 1
+	}
+	autoConf.Sort.Workers = workers
 
 	keys, err := cmd.Flags().GetStringSlice(keysFlagStr)
 	if err != nil {
@@ -140,14 +149,6 @@ func mainRun(cmd *cobra.Command, args []string) {
 	if autoConf.Sort.MaxMemory < 1 {
 		autoConf.Sort.MaxMemory = 1
 	}
-	autoConf.Sort.MaxGoRoutines, err = cmd.Flags().GetUint(maxGoRoutinesFlagStr)
-	if err != nil {
-		fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", maxGoRoutinesFlagStr, err)
-		return
-	}
-	if autoConf.Sort.MaxGoRoutines < 1 {
-		autoConf.Sort.MaxGoRoutines = 1
-	}
 
 	// Target input/output
 	autoConf.Input, err = cmd.Flags().GetString(jsonFlagStr) // Dir or file of normalized json
@@ -198,7 +199,6 @@ func mainRun(cmd *cobra.Command, args []string) {
 }
 
 func defaultConf(generate string) error {
-	workers := uint(runtime.NumCPU())
 	conf := &AutoConfig{
 		Input:     "",
 		OutputDir: "",
@@ -206,20 +206,20 @@ func defaultConf(generate string) error {
 		Bloom: &BloomConfig{
 			FilterSize:   8,
 			FilterHashes: 14,
-			Workers:      workers,
+			Workers:      1,
 			FilterLoad:   "",
 			FilterSave:   "",
 			Output:       "bloomed.json",
 		},
 		Index: &IndexConfig{
-			Workers:   workers,
+			Workers:   1,
 			Keys:      []string{"email", "user", "domain"},
 			NoCleanup: false,
 		},
 		Sort: &SortConfig{
-			MaxGoRoutines: 10000,
-			MaxMemory:     2048,
-			NoCleanup:     false,
+			Workers:   uint(runtime.NumCPU()),
+			MaxMemory: 2048,
+			NoCleanup: false,
 		},
 	}
 
@@ -239,19 +239,19 @@ func auto(conf *AutoConfig) error {
 	}
 
 	// *** Bloom ***
-	bloomed, err := bloom(conf)
+	bloomed, err := bloomStage(conf)
 	if err != nil {
 		return err
 	}
 
 	// *** Index ***
-	indexes, err := index(bloomed, conf)
+	indexes, err := indexStage(bloomed, conf)
 	if err != nil {
 		return err
 	}
 
 	// *** Sort ***
-	err = sort(indexes, conf)
+	err = sortStage(indexes, conf)
 	if err != nil {
 		return err
 	}
@@ -261,7 +261,7 @@ func auto(conf *AutoConfig) error {
 	return nil
 }
 
-func bloom(conf *AutoConfig) (string, error) {
+func bloomStage(conf *AutoConfig) (string, error) {
 	fmt.Printf("Applying bloom filter ...\u001b[s")
 	bloomOutput := conf.Bloom.Output
 	if bloomOutput == "" {
@@ -314,7 +314,7 @@ func bloomProgress(bloom *bloomer.Bloom, done chan bool) {
 	}
 }
 
-func index(bloomOutput string, conf *AutoConfig) ([]string, error) {
+func indexStage(bloomOutput string, conf *AutoConfig) ([]string, error) {
 	indexes := []string{}
 	indexTmpDir := filepath.Join(conf.TempDir, "indexer")
 	for _, key := range conf.Index.Keys {
@@ -362,13 +362,12 @@ func indexProgress(index *indexer.Indexer, done chan bool) {
 	}
 }
 
-func sort(indexes []string, conf *AutoConfig) error {
+func sortStage(indexes []string, conf *AutoConfig) error {
 	sortTmpDir := filepath.Join(conf.TempDir, "sorter")
 	for _, index := range indexes {
 		fmt.Printf("\r\u001b[2K\rSorting %s ...\u001b[s", path.Base(index))
 		output := path.Join(conf.OutputDir, path.Base(index))
-		sort, err := sorter.GetSorter(index, output, int(conf.Sort.MaxMemory),
-			int(conf.Sort.MaxGoRoutines), sortTmpDir, conf.Sort.NoCleanup)
+		sort, err := sorter.GetSorter(index, output, int(conf.Sort.Workers), int(conf.Sort.MaxMemory), sortTmpDir, conf.Sort.NoCleanup)
 		if err != nil {
 			return err
 		}
@@ -415,10 +414,10 @@ func sortProgress(sort *sorter.Sorter, done chan bool) {
 				runtime.NumGoroutine(), heapAllocGb, maxHeap, elapsed)
 			status := sort.Status
 			if status == sorter.StatusMerging {
-				status = fmt.Sprintf("%s (%.2f%%)", status, sort.MergePercent)
+				status = fmt.Sprintf("%s (%f%%)", status, sort.MergePercent)
 				fmt.Printf("\u001b[2K\r %s %s ... ", frames[spin%10], status)
 			} else if status == sorter.StatusSorting {
-				status = fmt.Sprintf("%s, completed %d of %d tape(s)", status, sort.TapesCompleted(), len(sort.Tapes))
+				status = fmt.Sprintf("%s, completed %d of %d tape(s)", status, sort.TapesCompleted(), sort.NumberOfTapes)
 				fmt.Printf("\u001b[2K\r %s %s ... ", frames[spin%10], status)
 			} else {
 				fmt.Printf("\u001b[2K\r %s %s ... ", frames[spin%10], status)

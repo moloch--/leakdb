@@ -212,7 +212,7 @@ func defaultConf(generate string) error {
 			Output:       "bloomed.json",
 		},
 		Index: &IndexConfig{
-			Workers:   1,
+			Workers:   2,
 			Keys:      []string{"email", "user", "domain"},
 			NoCleanup: false,
 		},

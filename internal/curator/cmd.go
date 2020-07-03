@@ -153,7 +153,7 @@ func init() {
 	// Indexer
 	indexCmd.Flags().StringP(jsonFlagStr, "j", "", "json input file")
 	indexCmd.Flags().StringP(outputFlagStr, "o", "leakdb.idx", "output index file")
-	indexCmd.Flags().UintP(workersFlagStr, "w", uint(1), "number of worker threads")
+	indexCmd.Flags().UintP(workersFlagStr, "w", uint(2), "number of worker threads")
 	indexCmd.Flags().StringP(keyFlagStr, "k", "email", "index key can be: email, user, or domain")
 	indexCmd.Flags().BoolP(noCleanupFlagStr, "N", false, "skip cleanup of temp file(s)")
 	indexCmd.Flags().StringP(tempDirFlagStr, "T", "", "directory for temp files (default: cwd)")

@@ -131,6 +131,9 @@ func (n *Normalize) Start() {
 // GetNormalizer - Start the normalizer
 func GetNormalizer(format Format, target string, output string, recursive bool, skipPrefix, skipSuffix string) (*Normalize, error) {
 	targets, err := getTargets(target, recursive)
+	if err != nil {
+		return nil, err
+	}
 	outputFile, err := os.OpenFile(output, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
 		return nil, err

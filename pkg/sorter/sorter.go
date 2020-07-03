@@ -336,7 +336,6 @@ func (idx *Sorter) Start() {
 		outputBuf = append(outputBuf, entry)
 		if mergeBufLen < len(outputBuf) {
 			idx.Drain(outputBuf)
-			outputBuf = nil
 			outputBuf = make([]Entry, 0)
 		}
 		nextEntry, okay := idx.Tapes[entry.TapeIndex].Pop()
@@ -349,7 +348,6 @@ func (idx *Sorter) Start() {
 		}
 	}
 	idx.Drain(outputBuf)
-	outputBuf = nil
 }
 
 // IsMergeCompleted - Returns true if all tapes have ended and heap is size 0

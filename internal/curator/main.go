@@ -125,10 +125,18 @@ func mainRun(cmd *cobra.Command, args []string) {
 
 	// Memory/goroutines
 	autoConf.Sort.MaxMemory, err = cmd.Flags().GetUint(maxMemoryFlagStr)
+	if err != nil {
+		fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", maxMemoryFlagStr, err)
+		return
+	}
 	if autoConf.Sort.MaxMemory < 1 {
 		autoConf.Sort.MaxMemory = 1
 	}
 	autoConf.Sort.MaxGoRoutines, err = cmd.Flags().GetUint(maxGoRoutinesFlagStr)
+	if err != nil {
+		fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", maxGoRoutinesFlagStr, err)
+		return
+	}
 	if autoConf.Sort.MaxGoRoutines < 1 {
 		autoConf.Sort.MaxGoRoutines = 1
 	}

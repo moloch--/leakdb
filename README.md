@@ -20,4 +20,9 @@ See the [wiki](https://github.com/moloch--/leakdb/wiki) for detailed setup and u
 
 ### Compile From Source
 
-Just run `make`, files will be put in `./bin`. The client, curator, and server are pure Go and should support any valid Go compiler target. The serverless binary is Linux only, since AWS Lambda only supports Linux.
+Just run `make <platform>`, files will be put in `./bin`. The client, curator, and server are pure Go and should support any valid Go compiler target. The serverless binary is Linux only, since AWS Lambda only supports Linux. The easiest way to compile the Windows binaries is to cross-compile them from a better operating system like Linux or MacOS.
+
+For example:
+* `make macos`
+* `make linux`
+* `make windows`

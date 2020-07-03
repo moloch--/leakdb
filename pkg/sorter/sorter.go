@@ -429,8 +429,7 @@ func (w *Worker) start() {
 	}()
 }
 
-// Quicksort - New quicksort implementation based on:
-//             http://azundo.github.io/blog/concurrent-quicksort-in-go/
+// Quicksort - Sort the entries
 func Quicksort(entries []*Entry) {
 	sort.Slice(entries, func(i, j int) bool {
 		return entries[i].Value() > entries[j].Value()

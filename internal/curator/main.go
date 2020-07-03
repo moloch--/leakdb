@@ -414,7 +414,7 @@ func sortProgress(sort *sorter.Sorter, done chan bool) {
 				runtime.NumGoroutine(), heapAllocGb, maxHeap, elapsed)
 			status := sort.Status
 			if status == sorter.StatusMerging {
-				status = fmt.Sprintf("%s (%f%%)", status, sort.MergePercent)
+				status = fmt.Sprintf("%s (%.1f%%)", status, sort.MergePercent)
 				fmt.Printf("\u001b[2K\r %s %s ... ", frames[spin%10], status)
 			} else if status == sorter.StatusSorting {
 				status = fmt.Sprintf("%s, completed %d of %d tape(s)", status, sort.TapesCompleted(), sort.NumberOfTapes)

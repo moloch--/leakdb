@@ -378,7 +378,7 @@ func sortProgress(sort *sorter.Sorter, done chan bool) {
 			if status == sorter.StatusMerging {
 				status = fmt.Sprintf("%s (%.2f%%)", status, sort.MergePercent)
 			}
-			fmt.Printf("\u001b[2K\r%s %s ... ", frames[spin%10], status)
+			fmt.Printf("\u001b[2K\r %s %s ... ", frames[spin%10], status)
 			spin++
 			stdout.Flush()
 		}

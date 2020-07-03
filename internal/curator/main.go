@@ -150,7 +150,7 @@ func mainRun(cmd *cobra.Command, args []string) {
 		fmt.Printf(Warn+"Failed to create temp dir %s", err)
 		return
 	}
-	// defer os.RemoveAll(autoConf.TempDir)
+	defer os.RemoveAll(autoConf.TempDir)
 
 	err = auto(autoConf)
 	if err != nil {
@@ -377,8 +377,13 @@ func sortProgress(sort *sorter.Sorter, done chan bool) {
 			status := sort.Status
 			if status == sorter.StatusMerging {
 				status = fmt.Sprintf("%s (%.2f%%)", status, sort.MergePercent)
+				fmt.Printf("\u001b[2K\r %s %s ... ", frames[spin%10], status)
+			} else if status == sorter.StatusSorting {
+				status = fmt.Sprintf("%s tape %d of %d", status, sort.CurrentTapeIndex, len(sort.Tapes))
+				fmt.Printf("\u001b[2K\r %s %s ... ", frames[spin%10], status)
+			} else {
+				fmt.Printf("\u001b[2K\r %s %s ... ", frames[spin%10], status)
 			}
-			fmt.Printf("\u001b[2K\r %s %s ... ", frames[spin%10], status)
 			spin++
 			stdout.Flush()
 		}

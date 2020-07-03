@@ -80,6 +80,13 @@ var indexCmd = &cobra.Command{
 		if err != nil {
 			fmt.Printf(Warn+"%s\n", err)
 		}
-		index.Start()
+		done := make(chan bool)
+		go indexProgress(index, done)
+		err = index.Start()
+		done <- true
+		<-done
+		if err != nil {
+			fmt.Printf(Warn+"%s\n", err)
+		}
 	},
 }

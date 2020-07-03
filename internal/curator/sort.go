@@ -83,6 +83,10 @@ var sortCmd = &cobra.Command{
 			fmt.Printf(Warn+"%s\n", err)
 			return
 		}
+		done := make(chan bool)
+		go sortProgress(sort, done)
 		sort.Start()
+		done <- true
+		<-done
 	},
 }

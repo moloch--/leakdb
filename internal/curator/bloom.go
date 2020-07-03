@@ -82,7 +82,11 @@ var bloomCmd = &cobra.Command{
 		if err != nil {
 			fmt.Printf(Warn+"Bloom error %s", err)
 		}
+		done := make(chan bool)
+		go bloomProgress(bloom, done)
 		err = bloom.Start()
+		done <- true
+		<-done
 		if err != nil {
 			fmt.Printf(Warn+"Bloom error %s", err)
 		}

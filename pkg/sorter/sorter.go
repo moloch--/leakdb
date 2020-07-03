@@ -196,7 +196,8 @@ type Sorter struct {
 	Heap          *binaryheap.Heap
 	MergePercent  float64
 
-	Status string
+	CurrentTapeIndex int
+	Status           string
 }
 
 // Get - Get an index entry at position
@@ -299,6 +300,7 @@ func (idx *Sorter) Start() {
 		tape := idx.CreateTape(tapeIndex, tapeSize)
 		tape.MergeSize = mergeBufLen
 		idx.Tapes = append(idx.Tapes, tape)
+		idx.CurrentTapeIndex = tapeIndex + 1
 		queue <- tape // Feed tapes to workers
 	}
 	for _, worker := range workers {

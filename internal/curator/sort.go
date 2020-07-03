@@ -49,10 +49,18 @@ var sortCmd = &cobra.Command{
 			output = fmt.Sprintf("%s_sorted.idx", index)
 		}
 		maxMemory, err := cmd.Flags().GetUint(maxMemoryFlagStr)
+		if err != nil {
+			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", maxMemoryFlagStr, err)
+			return
+		}
 		if maxMemory < 1 {
 			maxMemory = 1
 		}
 		maxGoRoutines, err := cmd.Flags().GetUint(maxGoRoutinesFlagStr)
+		if err != nil {
+			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", maxGoRoutinesFlagStr, err)
+			return
+		}
 		if maxGoRoutines < 1 {
 			maxGoRoutines = 1
 		}

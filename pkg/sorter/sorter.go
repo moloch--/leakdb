@@ -174,7 +174,7 @@ func (t *Tape) Pop() (Entry, bool) {
 }
 
 // IsEndOfTape - Returns true if end of tape has been reached
-//               The file is zero indexed but the Postion will
+//               The file is zero indexed but the Position will
 //               get incremented until EOF, so no Size-1.
 func (t *Tape) IsEndOfTape() bool {
 	return t.Position == t.Size

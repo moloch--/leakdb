@@ -67,15 +67,23 @@ func mainRun(cmd *cobra.Command, args []string) {
 	}
 
 	// Workers
-	workers, err := cmd.Flags().GetUint(workersFlagStr)
+	workers, err := cmd.Flags().GetUint(bloomWorkersFlagStr)
 	if err != nil {
-		fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", workersFlagStr, err)
+		fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", bloomWorkersFlagStr, err)
 		return
 	}
 	if workers < 1 {
 		workers = 1
 	}
 	autoConf.Bloom.Workers = workers
+	workers, err = cmd.Flags().GetUint(indexWorkersFlagStr)
+	if err != nil {
+		fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", indexWorkersFlagStr, err)
+		return
+	}
+	if workers < 1 {
+		workers = 1
+	}
 	autoConf.Index.Workers = workers
 
 	keys, err := cmd.Flags().GetStringSlice(keysFlagStr)

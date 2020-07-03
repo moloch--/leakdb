@@ -33,9 +33,11 @@ const (
 	detailsFlagStr = "details"
 
 	// Auto flags
-	configFlagStr   = "conf"
-	generateFlagStr = "generate"
-	keysFlagStr     = "keys"
+	configFlagStr       = "conf"
+	generateFlagStr     = "generate"
+	keysFlagStr         = "keys"
+	bloomWorkersFlagStr = "workers-bloom"
+	indexWorkersFlagStr = "workers-index"
 
 	// Normalize flags
 	targetFlagStr     = "target"
@@ -116,7 +118,8 @@ func init() {
 	rootCmd.Flags().StringP(tempDirFlagStr, "T", "", "directory for temp files (default: cwd)")
 	rootCmd.Flags().StringP(jsonFlagStr, "j", "", "input file/directory of normalized json file(s)")
 	rootCmd.Flags().StringP(outputFlagStr, "o", "", "output directory")
-	rootCmd.Flags().UintP(workersFlagStr, "w", uint(1), "max number of workers")
+	rootCmd.Flags().UintP(bloomWorkersFlagStr, "W", uint(1), "max number of bloom filter workers")
+	rootCmd.Flags().UintP(indexWorkersFlagStr, "w", uint(1), "max number of index workers")
 	rootCmd.Flags().UintP(filterSizeFlagStr, "s", 8, "bloom filter size in GBs")
 	rootCmd.Flags().UintP(filterHashesFlagStr, "f", 14, "number of bloom filter hash functions")
 	rootCmd.Flags().StringP(filterLoadFlagStr, "L", "", "load existing bloom filter from saved file")

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"github.com/moloch--/leakdb/pkg/indexer"
 	"github.com/spf13/cobra"
@@ -87,11 +88,13 @@ var indexCmd = &cobra.Command{
 		}
 		done := make(chan bool)
 		go indexProgress(index, done)
+		started := time.Now()
 		err = index.Start()
 		done <- true
 		<-done
 		if err != nil {
 			fmt.Printf(Warn+"%s\n", err)
 		}
+		fmt.Printf("Completed in %s\n", time.Now().Sub(started))
 	},
 }

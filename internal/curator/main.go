@@ -262,6 +262,7 @@ func auto(conf *AutoConfig) error {
 }
 
 func bloomStage(conf *AutoConfig) (string, error) {
+	stageStarted := time.Now()
 	fmt.Printf("Applying bloom filter ...\u001b[s")
 	bloomOutput := conf.Bloom.Output
 	if bloomOutput == "" {
@@ -282,7 +283,7 @@ func bloomStage(conf *AutoConfig) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Printf("\u001b[u done!\n")
+	fmt.Printf("\u001b[u done!  (%s)\n", time.Now().Sub(stageStarted))
 	return bloomOutput, nil
 }
 
@@ -315,6 +316,7 @@ func bloomProgress(bloom *bloomer.Bloom, done chan bool) {
 }
 
 func indexStage(bloomOutput string, conf *AutoConfig) ([]string, error) {
+	stageStarted := time.Now()
 	indexes := []string{}
 	indexTmpDir := filepath.Join(conf.TempDir, "indexer")
 	for _, key := range conf.Index.Keys {
@@ -335,7 +337,7 @@ func indexStage(bloomOutput string, conf *AutoConfig) ([]string, error) {
 			return nil, err
 		}
 
-		fmt.Printf("\u001b[u done!\n")
+		fmt.Printf("\u001b[u done!  (%s)\n", time.Now().Sub(stageStarted))
 	}
 	if !conf.Index.NoCleanup {
 		os.RemoveAll(indexTmpDir)
@@ -365,6 +367,7 @@ func indexProgress(index *indexer.Indexer, done chan bool) {
 func sortStage(indexes []string, conf *AutoConfig) error {
 	sortTmpDir := filepath.Join(conf.TempDir, "sorter")
 	for _, index := range indexes {
+		sortStarted := time.Now()
 		fmt.Printf("\r\u001b[2K\rSorting %s ...\u001b[s", path.Base(index))
 		output := path.Join(conf.OutputDir, path.Base(index))
 		sort, err := sorter.GetSorter(index, output, int(conf.Sort.Workers), int(conf.Sort.MaxMemory), sortTmpDir, conf.Sort.NoCleanup)
@@ -376,7 +379,7 @@ func sortStage(indexes []string, conf *AutoConfig) error {
 		sort.Start()
 		done <- true
 		<-done
-		fmt.Printf("\u001b[u done!\n")
+		fmt.Printf("\u001b[u done!  (%s)\n", time.Now().Sub(sortStarted))
 	}
 	return nil
 }

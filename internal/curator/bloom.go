@@ -20,6 +20,7 @@ package curator
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/moloch--/leakdb/pkg/bloomer"
 	"github.com/spf13/cobra"
@@ -84,11 +85,13 @@ var bloomCmd = &cobra.Command{
 		}
 		done := make(chan bool)
 		go bloomProgress(bloom, done)
+		started := time.Now()
 		err = bloom.Start()
 		done <- true
 		<-done
 		if err != nil {
 			fmt.Printf(Warn+"Bloom error %s", err)
 		}
+		fmt.Printf("Completed in %s\n", time.Now().Sub(started))
 	},
 }

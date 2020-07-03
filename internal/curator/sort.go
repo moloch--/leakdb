@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"github.com/moloch--/leakdb/pkg/sorter"
 	"github.com/spf13/cobra"
@@ -94,8 +95,10 @@ var sortCmd = &cobra.Command{
 		}
 		done := make(chan bool)
 		go sortProgress(sort, done)
+		started := time.Now()
 		sort.Start()
 		done <- true
 		<-done
+		fmt.Printf("Completed in %s\n", time.Now().Sub(started))
 	},
 }

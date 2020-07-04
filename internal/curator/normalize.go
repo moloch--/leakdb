@@ -98,7 +98,7 @@ func normalizeProgress(normalize *normalizer.Normalize, done chan bool) {
 			} else {
 				lastLineCount = 0
 				lastTarget = target
-				fmt.Printf("\r\u001b[2K%s:%d...", target, line)
+				fmt.Printf("\r\u001b[2K%s:%d ...", target, line)
 			}
 		case <-done:
 			fmt.Printf("\r\u001b[2K")

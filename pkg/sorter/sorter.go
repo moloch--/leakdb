@@ -486,7 +486,7 @@ func CheckSort(index string, verbose bool) (bool, error) {
 }
 
 // GetSorter - Start the sorting process
-func GetSorter(index, output string, maxWorkers int, maxMemory int, tempDir string, noTapeCleanup bool) (*Sorter, error) {
+func GetSorter(index, output string, maxWorkers, maxMemory int, tempDir string, noTapeCleanup bool) (*Sorter, error) {
 	indexStat, err := os.Stat(index)
 	if os.IsNotExist(err) {
 		return nil, err

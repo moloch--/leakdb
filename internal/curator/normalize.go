@@ -2,6 +2,7 @@ package curator
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/moloch--/leakdb/pkg/normalizer"
 	"github.com/spf13/cobra"
@@ -69,9 +70,31 @@ var normalizeCmd = &cobra.Command{
 
 		normalize, err := normalizer.GetNormalizer(format, target, output, recursive, skipPrefix, skipSuffix)
 		if err != nil {
-			fmt.Printf(Warn+"%s", err)
+			fmt.Printf(Warn+"%s\n", err)
 			return
 		}
+
+		done := make(chan bool)
+		go normalizeProgress(normalize, done)
+		start := time.Now()
 		normalize.Start()
+		done <- true
+		<-done
+		fmt.Printf("\r\u001b[2KCompleted in %s\n", time.Now().Sub(start))
+
 	},
+}
+
+func normalizeProgress(normalize *normalizer.Normalize, done chan bool) {
+	for {
+		select {
+		case <-time.After(time.Second):
+			target, line := normalize.GetStatus()
+			fmt.Printf("\r\u001b[2K Normalizing %s (line %d) ...", target, line)
+		case <-done:
+			fmt.Printf("\r\u001b[2K")
+			done <- true
+			return
+		}
+	}
 }

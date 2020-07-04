@@ -1,13 +1,5 @@
 package curator
 
-import (
-	"fmt"
-	"time"
-
-	"github.com/moloch--/leakdb/pkg/normalizer"
-	"github.com/spf13/cobra"
-)
-
 /*
 	---------------------------------------------------------------------
 	This program is free software: you can redistribute it and/or modify
@@ -24,6 +16,14 @@ import (
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 	----------------------------------------------------------------------
 */
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/moloch--/leakdb/pkg/normalizer"
+	"github.com/spf13/cobra"
+)
 
 var normalizeCmd = &cobra.Command{
 	Use:   "normalize",

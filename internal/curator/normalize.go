@@ -86,11 +86,13 @@ var normalizeCmd = &cobra.Command{
 }
 
 func normalizeProgress(normalize *normalizer.Normalize, done chan bool) {
+	lastLineCount := 0
 	for {
 		select {
 		case <-time.After(time.Second):
 			target, line := normalize.GetStatus()
-			fmt.Printf("\r\u001b[2K Normalizing %s (line %d) ...", target, line)
+			delta := line - lastLineCount
+			fmt.Printf("\r\u001b[2K%s:%d (%d/sec) ...", target, line, delta)
 		case <-done:
 			fmt.Printf("\r\u001b[2K")
 			done <- true

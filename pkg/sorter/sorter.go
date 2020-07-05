@@ -139,7 +139,6 @@ func (t *Tape) Prefetch(position int) {
 		buf := make([]byte, entrySize)
 		_, err := io.ReadAtLeast(tapeFile, buf, entrySize)
 		if err == io.EOF {
-			// t.Entries = t.Entries[:position]
 			t.Entries = append([]*Entry(nil), t.Entries[:index]...)
 			break
 		}

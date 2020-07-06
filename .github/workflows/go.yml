@@ -34,12 +34,21 @@ jobs:
     runs-on: "ubuntu-latest"
 
     steps:
-      - name: "Release"
-        run: |
-          make release
-      - uses: "marvinpinto/action-automatic-releases@latest"
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
         with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          prerelease: false
-          files: |
-            ./release/*.zip
+          go-version: ^1.13
+        id: go
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+
+    - name: "Release"
+      run: |
+        make release
+    - uses: "marvinpinto/action-automatic-releases@latest"
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        prerelease: false
+        files: |
+          ./release/*.zip

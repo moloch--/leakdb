@@ -107,7 +107,7 @@ var rootCmd = &cobra.Command{
 	Short: "Curate data sets for use with LeakDB",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		mainRun(cmd, args)
+		autoParseFlags(cmd, args)
 	},
 }
 

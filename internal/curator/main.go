@@ -70,7 +70,7 @@ type AutoConfig struct {
 	TempDir   string `json:"temp_dir"`
 }
 
-func mainRun(cmd *cobra.Command, args []string) {
+func autoParseFlags(cmd *cobra.Command, args []string) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		fmt.Printf(Warn+"%s\n", err)

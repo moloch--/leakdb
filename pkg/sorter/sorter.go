@@ -321,16 +321,11 @@ func (s *Sorter) Start() {
 
 	outputBuf := make([]*Entry, 0)
 	count := 0
-	mod := int(float64(s.NumberOfEntires) / 100.0)
-	if mod == 0 {
-		mod = 1 // For small values mod can be 0 after integer math
-	}
+
 	for {
 		value, okay := s.Heap.Pop()
 		count++
-		if count%mod == 0 {
-			s.MergePercent = (float64(count) / float64(s.NumberOfEntires)) * 100.0
-		}
+		s.MergePercent = (float64(count) / float64(s.NumberOfEntires)) * 100.0
 		if !okay {
 			panic("Failed to pop value from heap")
 		}

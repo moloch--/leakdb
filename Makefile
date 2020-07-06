@@ -113,5 +113,23 @@ windows: bin/leakdb-server
 .PHONY: lambda
 lambda: bin/leakdb-lambda
 
+
+.PHONY: release
+release:
+	rm -rf ./release-$(VERSION)
+	mkdir -p ./release-$(VERSION)
+
+	$(MAKE) clean
+	$(MAKE) linux
+	zip -r ./release-$(VERSION)/leakdb-linux.zip ./bin/
+
+	$(MAKE) clean
+	$(MAKE) windows
+	zip -r ./release-$(VERSION)/leakdb-windows.zip ./bin/
+
+	$(MAKE) clean
+	$(MAKE) macos
+	zip -r ./release-$(VERSION)/leakdb-macos.zip ./bin/
+
 clean:
 	rm -f ./bin/leakdb*

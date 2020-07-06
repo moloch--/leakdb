@@ -3,7 +3,7 @@
 **/.tapes/**
 
 bin/
-release-*
+release/
 
 .vscode/
 

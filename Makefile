@@ -116,20 +116,24 @@ lambda: bin/leakdb-lambda
 
 .PHONY: release
 release:
-	rm -rf ./release-$(VERSION)
-	mkdir -p ./release-$(VERSION)
+	rm -rf ./release
+	mkdir -p ./release
+
+	$(MAKE) clean
+	$(MAKE) lambda
+	cp ./bin/$(API_LAMDBA_OUTFILE).zip ./release
 
 	$(MAKE) clean
 	$(MAKE) linux
-	zip -r ./release-$(VERSION)/leakdb-linux.zip ./bin/
+	zip -r ./release/leakdb-linux.zip ./bin/
 
 	$(MAKE) clean
 	$(MAKE) windows
-	zip -r ./release-$(VERSION)/leakdb-windows.zip ./bin/
+	zip -r ./release/leakdb-windows.zip ./bin/
 
 	$(MAKE) clean
 	$(MAKE) macos
-	zip -r ./release-$(VERSION)/leakdb-macos.zip ./bin/
+	zip -r ./release/leakdb-macos.zip ./bin/
 
 clean:
 	rm -f ./bin/leakdb*

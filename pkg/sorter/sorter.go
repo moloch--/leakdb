@@ -448,7 +448,6 @@ func EntryComparer(a, b interface{}) int {
 
 // CheckSort - Check if an index is sorted
 func CheckSort(index string, verbose bool) (bool, error) {
-
 	indexStat, err := os.Stat(index)
 	if os.IsNotExist(err) || indexStat.IsDir() {
 		return false, err

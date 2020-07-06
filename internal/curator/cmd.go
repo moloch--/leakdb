@@ -118,7 +118,7 @@ func init() {
 	rootCmd.AddCommand(versionCmd)
 
 	// Main
-	rootCmd.Flags().StringSliceP(keysFlagStr, "k", []string{"user", "email"}, "Comma seperated list of key(s): email, user, domain")
+	rootCmd.Flags().StringSliceP(keysFlagStr, "k", []string{"user", "email"}, "Comma separated list of key(s): email, user, domain")
 	rootCmd.Flags().StringP(tempDirFlagStr, "T", "", "directory for temp files (default: cwd)")
 	rootCmd.Flags().StringP(jsonFlagStr, "j", "", "input file/directory of normalized json file(s)")
 	rootCmd.Flags().StringP(outputFlagStr, "o", "", "output directory")

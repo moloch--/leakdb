@@ -41,6 +41,11 @@ var bloomCmd = &cobra.Command{
 			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", outputFlagStr, err)
 			return
 		}
+		outputAppend, err := cmd.Flags().GetBool(outputAppendFlagStr)
+		if err != nil {
+			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", outputAppendFlagStr, err)
+			return
+		}
 		workers, err := cmd.Flags().GetUint(workersFlagStr)
 		if err != nil {
 			fmt.Printf(Warn+"Failed to parse --%s flag: %s\n", workersFlagStr, err)
@@ -79,7 +84,7 @@ var bloomCmd = &cobra.Command{
 		fmt.Printf(Info+"Target: %v\n", target)
 		fmt.Printf(Info+"Output: %s\n", output)
 
-		bloom, err := bloomer.GetBloomer(target, output, filterSave, filterLoad, workers, filterSize, filterHashes)
+		bloom, err := bloomer.GetBloomer(target, output, outputAppend, filterSave, filterLoad, workers, filterSize, filterHashes)
 		if err != nil {
 			fmt.Printf(Warn+"Bloom error %s", err)
 		}

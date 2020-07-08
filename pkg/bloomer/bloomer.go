@@ -136,7 +136,7 @@ func (w *Worker) start() {
 }
 
 // GetBloomer - Start the bloomer
-func GetBloomer(target string, output, saveFilter, loadFilter string, maxWorkers, filterSize, filterHashes uint) (*Bloom, error) {
+func GetBloomer(target string, output string, appendOutput bool, saveFilter, loadFilter string, maxWorkers, filterSize, filterHashes uint) (*Bloom, error) {
 	if maxWorkers < 1 {
 		maxWorkers = 1
 	}
@@ -146,7 +146,16 @@ func GetBloomer(target string, output, saveFilter, loadFilter string, maxWorkers
 		return nil, err
 	}
 
-	outputFile, err := os.OpenFile(output, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0600)
+	if _, err := os.Stat(output); !os.IsNotExist(err) && !appendOutput {
+		return nil, fmt.Errorf("Output location %s already exists", output)
+	}
+
+	mode := os.O_CREATE | os.O_RDWR
+	if appendOutput {
+		mode |= os.O_APPEND
+	}
+
+	outputFile, err := os.OpenFile(output, mode, 0600)
 	if err != nil {
 		return nil, err
 	}

@@ -43,6 +43,7 @@ type BloomConfig struct {
 	FilterLoad   string `json:"filter_load"`
 	FilterSave   string `json:"filter_save"`
 	Output       string `json:"output"`
+	Append       bool   `json:"append"`
 }
 
 // IndexConfig - Index generation configuration
@@ -208,6 +209,7 @@ func autoParseFlags(cmd *cobra.Command, args []string) {
 
 	err = auto(autoConf)
 	if err != nil {
+		fmt.Println()
 		fmt.Printf(Warn+"%s\n", err)
 	}
 }
@@ -278,11 +280,11 @@ func auto(conf *AutoConfig) error {
 func bloomStage(conf *AutoConfig) (string, error) {
 	stageStarted := time.Now()
 	fmt.Printf("Applying bloom filter ...\u001b[s")
-	bloomOutput := conf.Bloom.Output
-	if bloomOutput == "" {
-		bloomOutput = filepath.Join(conf.OutputDir, "bloomed.json")
+	output := conf.Bloom.Output
+	if output == "" {
+		output = filepath.Join(conf.OutputDir, "bloomed.json")
 	}
-	bloom, err := bloomer.GetBloomer(conf.Input, bloomOutput, conf.Bloom.FilterSave,
+	bloom, err := bloomer.GetBloomer(conf.Input, output, conf.Bloom.Append, conf.Bloom.FilterSave,
 		conf.Bloom.FilterLoad, conf.Bloom.Workers, conf.Bloom.FilterSize, conf.Bloom.FilterHashes)
 	if err != nil {
 		return "", err
@@ -298,7 +300,7 @@ func bloomStage(conf *AutoConfig) (string, error) {
 		return "", err
 	}
 	fmt.Printf("\u001b[u done!  (%s)\n", time.Now().Sub(stageStarted))
-	return bloomOutput, nil
+	return output, nil
 }
 
 func bloomProgress(bloom *bloomer.Bloom, done chan bool) {

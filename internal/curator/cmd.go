@@ -26,9 +26,10 @@ import (
 )
 
 const (
-	jsonFlagStr   = "json"
-	indexFlagStr  = "index"
-	outputFlagStr = "output"
+	jsonFlagStr         = "json"
+	indexFlagStr        = "index"
+	outputFlagStr       = "output"
+	outputAppendFlagStr = "append"
 
 	// Version flags
 	detailsFlagStr = "details"
@@ -143,6 +144,7 @@ func init() {
 	// Bloom
 	bloomCmd.Flags().StringP(jsonFlagStr, "j", "", "input directory of normalized json file(s)")
 	bloomCmd.Flags().StringP(outputFlagStr, "o", "", "output json file")
+	bloomCmd.Flags().BoolP(outputAppendFlagStr, "a", false, "append output file")
 	bloomCmd.Flags().UintP(workersFlagStr, "w", uint(1), "number of worker threads")
 	bloomCmd.Flags().UintP(filterSizeFlagStr, "s", 8, "bloom filter size in GBs")
 	bloomCmd.Flags().UintP(filterHashesFlagStr, "f", 14, "number of bloom filter hash functions")

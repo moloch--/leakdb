@@ -16,7 +16,7 @@ func TestBloomerSmall(t *testing.T) {
 	defer os.Remove(output.Name())
 
 	// Bloom file
-	bloom, err := GetBloomer("../../test/small.json", output.Name(), "", "", 1, 1, 4)
+	bloom, err := GetBloomer("../../test/small.json", output.Name(), true, "", "", 1, 1, 4)
 	if err != nil {
 		t.Errorf("GetBloomer failed: %s", err)
 	}
@@ -56,7 +56,7 @@ func TestBloomerLarge(t *testing.T) {
 	defer os.Remove(output.Name())
 
 	// Bloom file
-	bloom, err := GetBloomer("../../test/large.json", output.Name(), "", "", 1, 1, 4)
+	bloom, err := GetBloomer("../../test/large.json", output.Name(), true, "", "", 1, 1, 4)
 	if err != nil {
 		t.Errorf("GetBloomer failed: %s", err)
 	}

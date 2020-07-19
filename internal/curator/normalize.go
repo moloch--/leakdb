@@ -94,6 +94,7 @@ func normalizeProgress(normalize *normalizer.Normalize, done chan bool) {
 			target, line := normalize.GetStatus()
 			if lastTarget == target {
 				delta := line - lastLineCount
+				lastLineCount = line
 				fmt.Printf("\r\u001b[2K%s:%d (%d/sec) ...", target, line, delta)
 			} else {
 				lastLineCount = 0

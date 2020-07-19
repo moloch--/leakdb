@@ -33,6 +33,10 @@ const (
 )
 
 var (
+	coloneNewlinePattern     = regexp.MustCompile(emailRegex + ":" + passwordRegex)
+	semicolonNewlinePattern  = regexp.MustCompile(emailRegex + ";" + passwordRegex)
+	whitespaceNewlinePattern = regexp.MustCompile(emailRegex + "[ \t]+" + passwordRegex)
+
 	// Formats - Valid formats
 	Formats = map[string]Format{
 		colonNewline:      ColonNewline{},
@@ -67,13 +71,12 @@ func (cn ColonNewline) GetName() string {
 
 // GetPattern - Return the format's name
 func (cn ColonNewline) GetPattern() *regexp.Regexp {
-	return regexp.MustCompile(emailRegex + ":" + passwordRegex)
+	return coloneNewlinePattern
 }
 
 // Normalize - Normalize a line, return email, user, domain, password, error
 func (cn ColonNewline) Normalize(line string) (string, string, string, string, error) {
-	pattern := cn.GetPattern()
-	if !pattern.MatchString(line) {
+	if !cn.GetPattern().MatchString(line) {
 		return "", "", "", "", errors.New("Pattern mismatch")
 	}
 	linePieces := strings.Split(line, ":")
@@ -96,13 +99,12 @@ func (cn SemicolonNewline) GetName() string {
 
 // GetPattern - Return the format's name
 func (cn SemicolonNewline) GetPattern() *regexp.Regexp {
-	return regexp.MustCompile(emailRegex + ";" + passwordRegex)
+	return semicolonNewlinePattern
 }
 
 // Normalize - Normalize a line, return email, user, domain, password, error
 func (cn SemicolonNewline) Normalize(line string) (string, string, string, string, error) {
-	pattern := cn.GetPattern()
-	if !pattern.MatchString(line) {
+	if !cn.GetPattern().MatchString(line) {
 		return "", "", "", "", errors.New("Pattern mismatch")
 	}
 	linePieces := strings.Split(line, ";")
@@ -125,13 +127,12 @@ func (cn WhitespaceNewline) GetName() string {
 
 // GetPattern - Return the format's name
 func (cn WhitespaceNewline) GetPattern() *regexp.Regexp {
-	return regexp.MustCompile(emailRegex + "[ \t]+" + passwordRegex)
+	return whitespaceNewlinePattern
 }
 
 // Normalize - Normalize a line, return email, user, domain, password, error
 func (cn WhitespaceNewline) Normalize(line string) (string, string, string, string, error) {
-	pattern := cn.GetPattern()
-	if !pattern.MatchString(line) {
+	if !cn.GetPattern().MatchString(line) {
 		return "", "", "", "", errors.New("Pattern mismatch")
 	}
 	lineFields := strings.Fields(line)

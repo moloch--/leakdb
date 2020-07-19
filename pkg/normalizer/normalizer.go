@@ -23,7 +23,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 )
@@ -47,6 +46,8 @@ type Normalize struct {
 
 	target      string
 	targetCount int
+
+	Errors []error
 }
 
 // GetStatus - Return the current target file and line number
@@ -57,48 +58,47 @@ func (n *Normalize) GetStatus() (string, int) {
 func (n *Normalize) lineQueue(lines chan<- string) {
 	defer close(lines)
 	for _, target := range n.Targets {
-		fileInfo, err := os.Stat(target)
-		if os.IsNotExist(err) {
-			panic(err)
-		}
-		if fileInfo.IsDir() {
-			continue
-		}
-
-		file, err := os.Open(target)
-		if err != nil {
-			panic(err)
-		}
-		defer file.Close()
-
 		if n.SkipPrefix != "" && strings.HasPrefix(target, n.SkipPrefix) {
 			continue
 		}
 		if n.SkipSuffix != "" && strings.HasSuffix(target, n.SkipSuffix) {
 			continue
 		}
+		err := n.normalizeFile(lines, target)
+		if err != nil {
+			n.Errors = append(n.Errors, err)
+		}
+	}
+}
 
-		n.target = target
-		n.targetCount = 0
-		reader := bufio.NewReader(file)
-		for {
-			line, err := reader.ReadString('\n')
-			line = strings.TrimSpace(line)
-			if err == io.EOF {
-				if 0 < len(line) {
-					lines <- line
-				}
-				break
-			}
-			if err != nil {
-				panic(err)
-			}
-			n.targetCount++
+func (n *Normalize) normalizeFile(lines chan<- string, target string) error {
+	file, err := os.Open(target)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	n.target = target
+	n.targetCount = 0
+	reader := bufio.NewReader(file)
+	for {
+		line, err := reader.ReadString('\n')
+		line = strings.TrimSpace(line)
+		if err == io.EOF {
 			if 0 < len(line) {
 				lines <- line
 			}
+			break
+		}
+		if err != nil {
+			return err
+		}
+		n.targetCount++
+		if 0 < len(line) {
+			lines <- line
 		}
 	}
+	return nil
 }
 
 // Start - Start the normalization process
@@ -166,7 +166,7 @@ func getTargets(target string, recursive bool) ([]string, error) {
 					return err
 				}
 				if !info.IsDir() {
-					targets = append(targets, path.Join(currentPath, info.Name()))
+					targets = append(targets, currentPath)
 				}
 				return nil
 			})

@@ -81,6 +81,12 @@ var normalizeCmd = &cobra.Command{
 		done <- true
 		<-done
 		fmt.Printf("\r\u001b[2KCompleted in %s\n", time.Now().Sub(start))
+		if len(normalize.Errors) != 0 {
+			fmt.Printf(Warn+"%d errors occurred:\n", len(normalize.Errors))
+			for index, err := range normalize.Errors {
+				fmt.Printf("\t%d) %s\n", index, err)
+			}
+		}
 
 	},
 }

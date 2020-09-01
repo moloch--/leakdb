@@ -76,7 +76,6 @@ func (c *Converter) Start() error {
 			entry := &normalizer.Entry{}
 			err = json.Unmarshal(line, entry)
 			if err != nil {
-				fmt.Printf("\nLine: %v\n", line)
 				return fmt.Errorf("JSON unmarshal: %s", err)
 			}
 			if err = parquetWriter.Write(entry); err != nil {

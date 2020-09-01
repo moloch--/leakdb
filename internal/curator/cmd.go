@@ -175,6 +175,11 @@ func init() {
 	searchCmd.Flags().StringP(jsonFlagStr, "j", "", "original json file")
 	searchCmd.Flags().StringP(valueFlagStr, "v", "", "value to search for")
 	rootCmd.AddCommand(searchCmd)
+
+	// Parquet
+	parquetCmd.Flags().StringP(targetFlagStr, "t", "", "target JSON file to convert")
+	parquetCmd.Flags().StringP(outputFlagStr, "o", "leakdb-parquet", "output directory name")
+	rootCmd.AddCommand(parquetCmd)
 }
 
 // Execute - Execute the root command

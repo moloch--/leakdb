@@ -29,10 +29,10 @@ import (
 
 // Entry - A single entry
 type Entry struct {
-	Email    string `json:"email" parquet:"name=email, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	User     string `json:"user" parquet:"name=user, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Email    string `json:"email" parquet:"name=email, type=UTF8, encoding=PLAIN"`
+	User     string `json:"user" parquet:"name=user, type=UTF8, encoding=PLAIN"`
 	Domain   string `json:"domain" parquet:"name=domain, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	Password string `json:"password" parquet:"name=password, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Password string `json:"password" parquet:"name=password, type=UTF8, encoding=PLAIN"`
 }
 
 // Normalize - Normalizer job

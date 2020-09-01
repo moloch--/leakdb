@@ -25,7 +25,7 @@ K := $(foreach exec,$(EXECUTABLES),\
 #
 # Version info
 #
-VERSION = 1.0.3
+VERSION = 1.0.4
 COMPILED_AT = $(shell date +%s)
 GIT_DIRTY = $(shell git diff --quiet|| echo 'Dirty')
 GIT_COMMIT = $(shell git rev-parse HEAD)

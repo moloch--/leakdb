@@ -1,0 +1,4 @@
+*.zip
+leakdb
+leakdb-lambda
+leakdb-lambda-bigquery

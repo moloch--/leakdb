@@ -1,3 +1,4 @@
 *.zip
 leakdb
 leakdb-lambda
+leakdb-athena

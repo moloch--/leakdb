@@ -1,4 +1,4 @@
-module github.com/bishopfox/leakdb
+module github.com/moloch--/leakdb/aws/lambda/leakdb-bigquery
 
 go 1.12
 

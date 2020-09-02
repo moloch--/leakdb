@@ -56,8 +56,12 @@ bin/leakdb-server: .bin
 	GOOS=$(GOOS) $(GO) build $(LDFLAGS) -o ./bin/$(API_SERVER_OUTFILE) ./cmd/api-server
 
 bin/leakdb-lambda: .bin
-	cd aws/lambda/leakdb && GOOS=linux go build -o ./$(API_LAMDBA_OUTFILE) .
-	zip ./bin/$(API_LAMDBA_OUTFILE).zip ./aws/lambda/leakdb/$(API_LAMDBA_OUTFILE)
+	cd aws/lambda/leakdb-bigquery && GOOS=linux go build -o ./$(API_LAMDBA_OUTFILE) .
+	zip ./bin/$(API_LAMDBA_OUTFILE)-bigquery.zip ./aws/lambda/leakdb-bigquery/$(API_LAMDBA_OUTFILE)
+
+	cd aws/lambda/leakdb-athena && GOOS=linux go build -o ./$(API_LAMDBA_OUTFILE) .
+	zip ./bin/$(API_LAMDBA_OUTFILE)-athena.zip ./aws/lambda/leakdb-athena/$(API_LAMDBA_OUTFILE)
+
 
 #
 # Curator Builds

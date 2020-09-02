@@ -25,6 +25,14 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
+// QuerySet - A set of base64 encoded password hashes to query with
+type QuerySet struct {
+	Domain string `json:"domain"`
+	Email  string `json:"email"`
+	User   string `json:"user"`
+	Page   int    `json:"page"`
+}
+
 var (
 	// Generic Errors
 	errNoBody             = errors.New("No HTTP body")
@@ -63,12 +71,36 @@ func RequestHandler(request events.APIGatewayProxyRequest) (events.APIGatewayPro
 	if len(request.Body) < 1 {
 		return JSONError(errNoBody), nil
 	}
-
 	if request.HTTPMethod != "POST" {
 		return JSONError(errMethodNotSupported), nil
 	}
 
-	response := []byte{}
+	log.Printf("Parsing request body ...")
+	var querySet QuerySet
+	err := json.Unmarshal([]byte(request.Body), &querySet)
+	if err != nil {
+		return JSONError(errFailedToParseBody), nil
+	}
+	if len(querySet.Domain) == 0 && len(querySet.User) == 0 && len(querySet.Email) == 0 {
+		return JSONError(errEmptyQuerySet), nil
+	}
+
+	var resultSet *ResultSet
+	if 0 < len(querySet.Domain) {
+		resultSet, err = QueryDomain(querySet.Domain)
+	} else if 0 < len(querySet.Email) {
+		resultSet, err = QueryEmail(querySet.Email)
+	} else if 0 < len(querySet.User) {
+		resultSet, err = QueryUser(querySet.User)
+	}
+	if err != nil {
+		log.Printf("[error] %s", err)
+		return JSONError(err), nil
+	}
+	response, err := json.Marshal(resultSet)
+	if err != nil {
+		return JSONError(err), nil
+	}
 
 	return events.APIGatewayProxyResponse{
 		Body:       string(response),

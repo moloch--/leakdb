@@ -16,8 +16,11 @@ package main
 */
 
 import (
+	"errors"
 	"fmt"
+	"log"
 	"os"
+	"regexp"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -35,13 +38,39 @@ const (
 	RUNNING = "RUNNING"
 	// SUCCEEDED - Query successful state
 	SUCCEEDED = "SUCCEEDED"
+
+	// QUEUED - Query is queued status
+	QUEUED = "QUEUED"
 )
+
+// Result - A single entry in leakdb
+type Result struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+// ResultSet - The set of results from a QuerySet
+type ResultSet struct {
+	Count   int      `json:"count"`
+	Page    int      `json:"page"`
+	Pages   int      `json:"pages"`
+	Results []Result `json:"results"`
+}
 
 var (
 	awsRegion      = getEnv("AWS_REGION", "us-west-2")
 	athenaDatabase = getEnv("ATHENA_DATABASE", "leakdb")
 	athenaTable    = getEnv("ATHENA_TABLE", "leakdb")
 	s3ResultBucket = getEnv("S3_RESULT_BUCKET", "s3://leakdb-results")
+
+	// WARNING: Since Athena does not support prepaired statements, nor provide
+	// any escaping methods we're on our own. Because AWS hates its users and
+	// the only thing worse than the API design are the docs.
+	// Allowed: alpha-numerics, numbers, '.' and '@'
+	matchWhitelist = regexp.MustCompile(`^[A-Za-z0-9@\.]+$`).MatchString
+
+	// Returns if a parameter does not match the whitelist
+	errInvalidParameter = errors.New("Parameter contains an invalid character")
 )
 
 func getEnv(key, defaultValue string) string {
@@ -53,12 +82,36 @@ func getEnv(key, defaultValue string) string {
 }
 
 // QueryEmail - Query an email address
-func QueryEmail(email string) ([]string, error) {
+func QueryEmail(email string) (*ResultSet, error) {
 	db := fmt.Sprintf("%s.%s", athenaDatabase, athenaTable)
-	return queryAthena(email, fmt.Sprintf("SELECT email,password FROM %s WHERE email = ?", db))
+	if matchWhitelist(email) {
+		// See above, Athena does not provide any safe query method with user input like a prepared statement.
+		return queryAthena(fmt.Sprintf("SELECT email, password FROM %s WHERE email = '%s'", db, email))
+	}
+	return nil, errInvalidParameter
 }
 
-func queryAthena(value string, query string) ([]string, error) {
+// QueryDomain - Query an domain
+func QueryDomain(domain string) (*ResultSet, error) {
+	db := fmt.Sprintf("%s.%s", athenaDatabase, athenaTable)
+	if matchWhitelist(domain) {
+		// See above, Athena does not provide any safe query method with user input like a prepared statement.
+		return queryAthena(fmt.Sprintf("SELECT email, password FROM %s WHERE domain = '%s'", db, domain))
+	}
+	return nil, errInvalidParameter
+}
+
+// QueryUser - Query an User
+func QueryUser(user string) (*ResultSet, error) {
+	db := fmt.Sprintf("%s.%s", athenaDatabase, athenaTable)
+	if matchWhitelist(user) {
+		// See above, Athena does not provide any safe query method with user input like a prepared statement.
+		return queryAthena(fmt.Sprintf("SELECT email, password FROM %s WHERE user = '%s'", db, user))
+	}
+	return nil, errInvalidParameter
+}
+
+func queryAthena(query string) (*ResultSet, error) {
 	awsCfg := &aws.Config{}
 	awsCfg.WithRegion(awsRegion)
 
@@ -75,41 +128,51 @@ func queryAthena(value string, query string) ([]string, error) {
 	resultCfg.SetOutputLocation(s3ResultBucket)
 	queryInput.SetResultConfiguration(&resultCfg)
 
-	result, err := svc.StartQueryExecution(&queryInput)
+	startResponse, err := svc.StartQueryExecution(&queryInput)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("StartQueryExecution result:")
-	fmt.Println(result.GoString())
+	log.Printf("StartQueryExecution result: %s", startResponse.GoString())
 
 	var qri athena.GetQueryExecutionInput
-	qri.SetQueryExecutionId(*result.QueryExecutionId)
+	qri.SetQueryExecutionId(*startResponse.QueryExecutionId)
 
 	var queryOutput *athena.GetQueryExecutionOutput
 
 	for {
-		fmt.Println("polling results ...")
 		queryOutput, err = svc.GetQueryExecution(&qri)
 		if err != nil {
 			return nil, err
 		}
-		if *queryOutput.QueryExecution.Status.State != RUNNING {
+		queryState := *queryOutput.QueryExecution.Status.State
+		log.Printf("Query state is %s\n", queryState)
+		if queryState != RUNNING && queryState != QUEUED {
 			break
 		}
 		time.Sleep(time.Duration(250) * time.Millisecond)
 	}
 
 	if *queryOutput.QueryExecution.Status.State == SUCCEEDED {
-		var ip athena.GetQueryResultsInput
-		ip.SetQueryExecutionId(*result.QueryExecutionId)
-		op, err := svc.GetQueryResults(&ip)
+		// Athena has one of the worst APIs I've ever seen.
+		var resultsRequest athena.GetQueryResultsInput
+		resultsRequest.SetQueryExecutionId(*startResponse.QueryExecutionId)
+		cursor, err := svc.GetQueryResults(&resultsRequest)
 		if err != nil {
 			return nil, err
 		}
-		fmt.Printf("%+v", op)
-	} else {
-		fmt.Println(*queryOutput.QueryExecution.Status.State)
+		resultSet := &ResultSet{
+			Count:   len(cursor.ResultSet.Rows) - 1,
+			Results: []Result{},
+		}
+		// The first row is always the column names for some dumb reason
+		for _, row := range cursor.ResultSet.Rows[1:] {
+			resultSet.Results = append(resultSet.Results, Result{
+				Email:    *row.Data[0].VarCharValue,
+				Password: *row.Data[1].VarCharValue,
+			})
+		}
+		return resultSet, nil
 	}
-
-	return []string{}, nil
+	queryFailed := *queryOutput.QueryExecution.Status.State
+	return nil, fmt.Errorf("Query completed in %s state", queryFailed)
 }
